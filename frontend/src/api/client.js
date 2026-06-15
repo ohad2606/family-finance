@@ -24,8 +24,8 @@ api.interceptors.response.use(
   res => res,
   async err => {
     const orig = err.config
-    const isAuthEndpoint = orig.url?.startsWith('/auth/')
-    if (err.response?.status === 401 && !orig._retried && !isAuthEndpoint) {
+    const skipRefresh = orig.url?.includes('/auth/refresh')
+    if (err.response?.status === 401 && !orig._retried && !skipRefresh) {
       orig._retried = true
       try {
         if (!refreshing) {
