@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useEffect, useRef, useState } from 'react'
+import KaspiLogo from './components/KaspiLogo'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
@@ -90,6 +91,14 @@ function MorePage() {
           <span style={{ fontSize: '1.3rem' }}>⎋</span>
           <span>יציאה מהחשבון</span>
         </button>
+        <footer style={{ marginTop: 24, paddingBottom: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <KaspiLogo size={20} />
+            <span style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: C.ink }}>כספי</span>
+          </div>
+          <span style={{ color: C.muted, fontSize: '0.75rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © {new Date().getFullYear()}</span>
+          <a href="mailto:ohad2606@gmail.com" style={{ color: C.muted, fontSize: '0.75rem', textDecoration: 'none' }}>תמיכה: ohad2606@gmail.com</a>
+        </footer>
       </main>
     </div>
   )

@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   })
 
   const signOut = async () => {
-    await apiLogout()
+    try { await apiLogout() } catch {}
     queryClient.clear()
   }
 
