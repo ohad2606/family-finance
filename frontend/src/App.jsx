@@ -140,7 +140,7 @@ function InstallBanner() {
     <div style={styles.installBanner}>
       <span style={{ fontSize: '1.3rem' }}>📲</span>
       <div style={{ flex: 1 }}>
-        <p style={styles.installTitle}>הוסף לסטמך הבית</p>
+        <p style={styles.installTitle}>הוסף למסך הבית</p>
         {showIos
           ? <p style={styles.installSub}>לחץ על <strong>שתף</strong> ← <strong>הוסף למסך הבית</strong></p>
           : <p style={styles.installSub}>גישה מהירה לכספי ללא דפדפן</p>
