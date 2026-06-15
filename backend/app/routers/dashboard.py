@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import get_current_household
 from app.models.finance import Account, Category, Transaction
-from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend
+from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -120,6 +120,93 @@ async def cashflow(
         else:
             cur = cur.replace(month=cur.month + 1)
     return out
+
+
+@router.get("/annual", response_model=AnnualReport)
+async def annual_report(
+    year: int = Query(None),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    if year is None:
+        year = date.today().year
+    year_start = date(year, 1, 1)
+    year_end = date(year, 12, 31)
+
+    # Monthly income/expense
+    monthly = await db.execute(
+        select(
+            extract("month", Transaction.transaction_date).label("mo"),
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("income"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("expense"),
+        )
+        .where(
+            Transaction.household_id == household.id,
+            Transaction.transaction_date >= year_start,
+            Transaction.transaction_date <= year_end,
+        )
+        .group_by("mo")
+        .order_by("mo")
+    )
+    row_map = {int(r.mo): r for r in monthly.all()}
+    months = []
+    for m in range(1, 13):
+        r = row_map.get(m)
+        months.append(CashflowMonth(
+            month=f"{year}-{m:02d}",
+            income=float(r.income) if r else 0.0,
+            expense=float(r.expense) if r else 0.0,
+        ))
+
+    total_income = sum(m.income for m in months)
+    total_expense = sum(m.expense for m in months)
+    net = total_income - total_expense
+    savings_rate = round(net / total_income, 4) if total_income > 0 else 0.0
+
+    # Top expense categories for the year
+    cat_rows = await db.execute(
+        select(
+            Transaction.category_id,
+            func.sum(Transaction.amount).label("total"),
+        )
+        .where(
+            Transaction.household_id == household.id,
+            Transaction.kind == "expense",
+            Transaction.transaction_date >= year_start,
+            Transaction.transaction_date <= year_end,
+        )
+        .group_by(Transaction.category_id)
+        .order_by(func.sum(Transaction.amount).desc())
+        .limit(8)
+    )
+    cat_data = cat_rows.all()
+    cat_ids = [r.category_id for r in cat_data if r.category_id]
+    cats = {}
+    if cat_ids:
+        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids)))
+        cats = {c.id: c for c in cat_result.scalars().all()}
+
+    top_expenses = [
+        CategorySpend(
+            category_id=r.category_id,
+            category_name=cats[r.category_id].name if r.category_id in cats else "ללא קטגוריה",
+            category_icon=cats[r.category_id].icon if r.category_id in cats else None,
+            amount=round(float(r.total), 2),
+            pct=round(float(r.total) / total_expense, 4) if total_expense else 0,
+        )
+        for r in cat_data
+    ]
+
+    return AnnualReport(
+        year=year,
+        months=months,
+        total_income=round(total_income, 2),
+        total_expense=round(total_expense, 2),
+        net=round(net, 2),
+        savings_rate=savings_rate,
+        top_expenses=top_expenses,
+    )
 
 
 @router.get("/spending", response_model=list[CategorySpend])

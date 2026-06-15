@@ -258,3 +258,13 @@ class DashboardSummary(BaseModel):
     month_income: float
     month_expense: float
     month_balance: float
+
+
+class AnnualReport(BaseModel):
+    year: int
+    months: list[CashflowMonth]
+    total_income: float
+    total_expense: float
+    net: float
+    savings_rate: float
+    top_expenses: list[CategorySpend]
