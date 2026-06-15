@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import KaspiLogo from '../components/KaspiLogo'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -27,7 +28,7 @@ export default function LandingPage() {
     <div style={s.page}>
       {/* Nav */}
       <header style={s.nav}>
-        <span style={s.navLogo}>כספי</span>
+        <span style={s.navLogo}><KaspiLogo size={26} /> כספי</span>
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={s.navBtn} onClick={() => navigate('/login')}>כניסה</button>
           <button style={s.navCta} onClick={() => navigate('/login?mode=register')}>התחל בחינם</button>
@@ -136,8 +137,14 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer style={s.footer}>
-        <span style={{ fontWeight: 700, color: C.ink }}>כספי</span>
-        <span style={{ color: C.muted, fontSize: '0.8rem' }}>family-finance.net</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <KaspiLogo size={22} />
+          <span style={{ fontWeight: 700, color: C.ink }}>כספי</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <span style={{ color: C.muted, fontSize: '0.78rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © {new Date().getFullYear()}</span>
+          <a href="mailto:ohad2606@gmail.com" style={{ color: C.muted, fontSize: '0.78rem', textDecoration: 'none' }}>תמיכה: ohad2606@gmail.com</a>
+        </div>
         <button style={{ ...s.navBtn, fontSize: '0.8rem' }} onClick={() => navigate('/login')}>כניסה</button>
       </footer>
     </div>
@@ -159,7 +166,7 @@ const s = {
   page: { minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', color: C.ink },
 
   nav: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 },
-  navLogo: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.3rem', color: C.ink },
+  navLogo: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.3rem', color: C.ink, display: 'flex', alignItems: 'center', gap: 8 },
   navBtn: { padding: '0.4rem 0.9rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.ink, fontFamily: 'Assistant, sans-serif', fontWeight: 600, fontSize: '0.9rem' },
   navCta: { padding: '0.4rem 0.9rem', border: 'none', borderRadius: 8, background: C.brass, color: '#fff', cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '0.9rem' },
 
@@ -191,5 +198,5 @@ const s = {
   ctaTitle: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.8rem', color: C.ink, margin: '0 0 0.75rem' },
   ctaSub: { color: C.muted, margin: '0 0 2rem', fontSize: '1rem' },
 
-  footer: { background: C.card, borderTop: `1px solid ${C.line}`, padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  footer: { background: C.card, borderTop: `1px solid ${C.line}`, padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
 }

@@ -8,6 +8,7 @@ import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
+import KaspiLogo from '../components/KaspiLogo'
 import DonutChart from '../components/DonutChart'
 
 const C = {
@@ -47,7 +48,7 @@ export default function DashboardPage() {
     <div style={styles.page}>
       {/* Header */}
       <header style={styles.header}>
-        <h1 style={styles.logo}>כספי</h1>
+        <h1 style={styles.logo}><KaspiLogo size={30} /> כספי</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={styles.userName}>{user?.display_name}</span>
           <button style={styles.logoutBtn} onClick={signOut}>יציאה</button>
@@ -299,7 +300,7 @@ export default function DashboardPage() {
 const styles = {
   page: { minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 120 },
   header: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
-  logo: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.4rem', color: C.ink, margin: 0 },
+  logo: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.4rem', color: C.ink, margin: 0, display: 'flex', alignItems: 'center', gap: 8 },
   userName: { color: C.muted, fontSize: '0.85rem' },
   logoutBtn: { padding: '0.35rem 0.75rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.muted, fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem' },
   alertBanner: { background: '#FEF3C7', borderRadius: 14, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', border: '1px solid #FCD34D' },
