@@ -18,7 +18,7 @@ const OAUTH_ERRORS = {
 }
 
 export default function LoginPage() {
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState(searchParams.get('mode') === 'register' ? 'register' : 'login')
   const [form, setForm] = useState({ email: '', password: '', display_name: '', household_name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -56,6 +56,7 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
+        <button style={styles.backLink} onClick={() => navigate('/welcome')}>← כספי</button>
         <h1 style={styles.logo}>כספי</h1>
         <p style={styles.tagline}>ניהול פיננסי משפחתי</p>
 
@@ -128,4 +129,5 @@ const styles = {
   input: { padding: '0.75rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '1rem', color: C.ink, outline: 'none', textAlign: 'right' },
   btn: { padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 12, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
   error: { color: C.expense, fontSize: '0.9rem', margin: 0, textAlign: 'center' },
+  backLink: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.85rem', padding: '0 0 0.5rem', display: 'block' },
 }

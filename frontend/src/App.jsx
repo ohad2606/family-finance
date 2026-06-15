@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
+import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import BudgetPage from './pages/BudgetPage'
@@ -22,7 +23,7 @@ const C = { ink: '#1B2A27', muted: '#6B746E', line: '#D5D8CF', card: '#F7F8F4', 
 function RequireAuth({ children }) {
   const { user, isLoading } = useAuth()
   if (isLoading) return <div style={{ minHeight: '100vh', background: '#E9EBE4' }} />
-  return user ? children : <Navigate to="/login" replace />
+  return user ? children : <Navigate to="/welcome" replace />
 }
 
 function RequireGuest({ children }) {
@@ -98,6 +99,7 @@ function AppShell() {
   return (
     <>
       <Routes>
+        <Route path="/welcome" element={<RequireGuest><LandingPage /></RequireGuest>} />
         <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
         <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage onBack={() => navigate('/')} /></RequireAuth>} />
