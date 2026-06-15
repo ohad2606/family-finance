@@ -5,7 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.database import async_session
+from app.database import AsyncSessionLocal as async_session
 from app.models.finance import RecurringRule, Transaction
 
 logger = logging.getLogger(__name__)

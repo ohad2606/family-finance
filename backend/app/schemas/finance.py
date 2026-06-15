@@ -90,6 +90,43 @@ class TransactionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Savings Goals ---
+
+class SavingsGoalCreate(BaseModel):
+    name: str
+    target_amount: float
+    current_amount: float = 0
+    target_date: Optional[date] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+
+
+class SavingsGoalUpdate(BaseModel):
+    name: Optional[str] = None
+    target_amount: Optional[float] = None
+    current_amount: Optional[float] = None
+    target_date: Optional[date] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    is_completed: Optional[bool] = None
+
+
+class SavingsGoalOut(BaseModel):
+    id: int
+    name: str
+    target_amount: float
+    current_amount: float
+    target_date: Optional[date]
+    icon: Optional[str]
+    color: Optional[str]
+    is_completed: bool
+    pct: float          # 0–1
+    months_left: Optional[int]
+    monthly_needed: Optional[float]
+
+    model_config = {"from_attributes": True}
+
+
 # --- Loans ---
 
 class LoanCreate(BaseModel):

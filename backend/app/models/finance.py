@@ -78,6 +78,21 @@ class Budget(Base):
     category: Mapped["Category"] = relationship()
 
 
+class SavingsGoal(Base):
+    __tablename__ = "savings_goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    target_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    current_amount: Mapped[float] = mapped_column(Numeric(14, 2), default=0, nullable=False)
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Loan(Base):
     __tablename__ = "loans"
 
