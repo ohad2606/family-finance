@@ -5,9 +5,11 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.email import send_reset_email
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     decode_token,
     generate_csrf_token,
     hash_password,
@@ -206,6 +208,41 @@ async def update_me(body: dict, ctx: tuple = Depends(get_current_household), db:
     member = member_result.scalar_one()
     return UserOut(id=u.id, email=u.email, display_name=u.display_name,
                    household_id=household.id, household_name=household.name, role=member.role)
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: dict, db: AsyncSession = Depends(get_db)):
+    email = (body.get("email") or "").strip().lower()
+    # Always return 200 to avoid user enumeration
+    result = await db.execute(select(User).where(User.email == email, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if user and user.password_hash:
+        token = create_reset_token(user.id)
+        link = f"https://family-finance.net/reset-password?token={token}"
+        await send_reset_email(email, link)
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(body: dict, db: AsyncSession = Depends(get_db)):
+    token = (body.get("token") or "").strip()
+    new_password = (body.get("password") or "")
+    if len(new_password) < 8:
+        raise HTTPException(400, "הסיסמה חייבת להכיל לפחות 8 תווים")
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "reset":
+            raise HTTPException(400, "קישור לא תקין")
+        user_id = int(payload["sub"])
+    except Exception:
+        raise HTTPException(400, "הקישור פג תוקף או לא תקין")
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(400, "משתמש לא נמצא")
+    user.password_hash = hash_password(new_password)
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/change-password", dependencies=[Depends(verify_csrf)])

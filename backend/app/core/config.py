@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "https://family-finance.net/api/auth/google/callback"
+    RESEND_API_KEY: str = ""
+    FROM_EMAIL: str = "noreply@family-finance.net"
 
     @property
     def is_production(self) -> bool:

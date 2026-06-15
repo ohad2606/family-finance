@@ -16,6 +16,8 @@ import ImportPage from './pages/ImportPage'
 import HouseholdPage from './pages/HouseholdPage'
 import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 const queryClient = new QueryClient()
 
@@ -173,6 +175,8 @@ function AppShell() {
         <Route path="/import" element={<RequireAuth><ImportPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/household" element={<RequireAuth><HouseholdPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/join" element={<JoinPage />} />
+        <Route path="/forgot-password" element={<RequireGuest><ForgotPasswordPage /></RequireGuest>} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<RequireAuth><ProfilePage onBack={() => navigate('/more')} /></RequireAuth>} />
       </Routes>
       {user && pathname !== '/login' && <BottomNav />}

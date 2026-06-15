@@ -90,6 +90,11 @@ export default function LoginPage() {
           <button style={styles.btn} type="submit" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'כניסה' : 'הרשמה'}
           </button>
+          {mode === 'login' && (
+            <button type="button" style={styles.forgotLink} onClick={() => navigate('/forgot-password')}>
+              שכחתי סיסמה
+            </button>
+          )}
         </form>
       </div>
     </div>
@@ -130,4 +135,5 @@ const styles = {
   btn: { padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 12, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
   error: { color: C.expense, fontSize: '0.9rem', margin: 0, textAlign: 'center' },
   backLink: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.85rem', padding: '0 0 0.5rem', display: 'block' },
+  forgotLink: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.85rem', textAlign: 'center', padding: '4px 0' },
 }

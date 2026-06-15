@@ -33,5 +33,11 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
 
+def create_reset_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    data = {"sub": str(user_id), "exp": expire, "type": "reset"}
+    return jwt.encode(data, settings.SECRET_KEY, algorithm="HS256")
+
+
 def generate_csrf_token() -> str:
     return secrets.token_hex(32)
