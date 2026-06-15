@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
+import NetWorthChart from '../components/NetWorthChart'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const { data: cashflow = [] } = useQuery({ queryKey: ['cashflow'], queryFn: () => getCashflow(6) })
   const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr) })
   const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
+  const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12) })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -55,6 +57,22 @@ export default function DashboardPage() {
             <span style={{ color: C.income }}>↑ {fmt(summary?.total_assets)} נכסים</span>
             <span style={{ color: C.expense }}>↓ {fmt(summary?.total_liabilities)} חובות</span>
           </div>
+          {nwHistory.length >= 2 && (() => {
+            const first = nwHistory[0].net_worth
+            const last = nwHistory[nwHistory.length - 1].net_worth
+            const delta = last - first
+            const pct = first !== 0 ? Math.round((delta / Math.abs(first)) * 100) : null
+            return (
+              <div style={{ marginTop: 10 }}>
+                <NetWorthChart data={nwHistory} />
+                {pct !== null && (
+                  <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.78rem', color: delta >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                    {delta >= 0 ? '▲' : '▼'} {Math.abs(pct)}% ב-12 חודשים
+                  </p>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Month summary */}

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import get_current_household
 from app.models.finance import Account, Category, Transaction
-from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport
+from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport, NetWorthPoint
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -207,6 +207,76 @@ async def annual_report(
         savings_rate=savings_rate,
         top_expenses=top_expenses,
     )
+
+
+@router.get("/networth-history", response_model=list[NetWorthPoint])
+async def networth_history(
+    months: int = Query(12, ge=3, le=36),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    today = date.today()
+
+    # Window: first day of (months) months ago
+    window_start = today.replace(day=1)
+    for _ in range(months - 1):
+        window_start = (window_start - timedelta(days=1)).replace(day=1)
+
+    # Opening balances across all active accounts
+    acc_result = await db.execute(
+        select(Account).where(Account.household_id == household.id, Account.is_active == True)
+    )
+    accounts = acc_result.scalars().all()
+    opening_total = sum(float(a.opening_balance) for a in accounts)
+
+    # All transactions before window: gives us the base net worth at window_start
+    pre = await db.execute(
+        select(
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
+        ).where(
+            Transaction.household_id == household.id,
+            Transaction.transaction_date < window_start,
+        )
+    )
+    pre_row = pre.first()
+    base = opening_total + float(pre_row.inc or 0) - float(pre_row.exp or 0)
+
+    # Monthly income/expense within the window
+    monthly = await db.execute(
+        select(
+            extract("year", Transaction.transaction_date).label("yr"),
+            extract("month", Transaction.transaction_date).label("mo"),
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("income"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("expense"),
+        )
+        .where(
+            Transaction.household_id == household.id,
+            Transaction.transaction_date >= window_start,
+            Transaction.transaction_date <= today,
+        )
+        .group_by("yr", "mo")
+        .order_by("yr", "mo")
+    )
+    row_map = {(int(r.yr), int(r.mo)): r for r in monthly.all()}
+
+    out = []
+    running = base
+    cur = window_start
+    for _ in range(months):
+        r = row_map.get((cur.year, cur.month))
+        inc = float(r.income) if r else 0.0
+        exp = float(r.expense) if r else 0.0
+        running += inc - exp
+        out.append(NetWorthPoint(
+            month=cur.strftime("%Y-%m"),
+            net_worth=round(running, 2),
+            income=round(inc, 2),
+            expense=round(exp, 2),
+        ))
+        cur = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return out
 
 
 @router.get("/spending", response_model=list[CategorySpend])

@@ -74,11 +74,16 @@ function MonthlyTab() {
     queryKey: ['spending', month, kind],
     queryFn: () => getSpending(month, kind),
   })
+  const { data: prevSpending = [] } = useQuery({
+    queryKey: ['spending', prevMonth(month), kind],
+    queryFn: () => getSpending(prevMonth(month), kind),
+  })
   const { data: cashflow = [] } = useQuery({
     queryKey: ['cashflow'],
     queryFn: () => getCashflow(6),
   })
   const total = spending.reduce((s, d) => s + d.amount, 0)
+  const prevByCategory = Object.fromEntries(prevSpending.map(d => [d.category_id, d.amount]))
 
   return (
     <>
@@ -116,6 +121,18 @@ function MonthlyTab() {
                     <div style={s.barWrap}><div style={{...s.barFill,width:`${d.pct*100}%`,background:PALETTE[i%PALETTE.length]}} /></div>
                     <span style={s.catPct}>{Math.round(d.pct*100)}%</span>
                     <span style={s.catAmt}>{fmt(d.amount)}</span>
+                    {(() => {
+                      const prev = prevByCategory[d.category_id]
+                      if (!prev) return null
+                      const delta = ((d.amount - prev) / prev) * 100
+                      const up = delta > 0
+                      const isGood = kind === 'expense' ? !up : up
+                      return (
+                        <span style={{ fontSize: '0.65rem', color: isGood ? C.income : C.expense, flexShrink: 0, minWidth: 30, textAlign: 'left' }}>
+                          {up ? '▲' : '▼'}{Math.abs(Math.round(delta))}%
+                        </span>
+                      )
+                    })()}
                   </div>
                 ))}
               </div>

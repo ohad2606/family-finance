@@ -268,3 +268,10 @@ class AnnualReport(BaseModel):
     net: float
     savings_rate: float
     top_expenses: list[CategorySpend]
+
+
+class NetWorthPoint(BaseModel):
+    month: str   # "YYYY-MM"
+    net_worth: float
+    income: float
+    expense: float
