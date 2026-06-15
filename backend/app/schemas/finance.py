@@ -237,6 +237,14 @@ class BudgetLineOut(BaseModel):
 
 # --- Dashboard ---
 
+class CategorySpend(BaseModel):
+    category_id: Optional[int]
+    category_name: str
+    category_icon: Optional[str]
+    amount: float
+    pct: float
+
+
 class CashflowMonth(BaseModel):
     month: str   # "YYYY-MM"
     income: float

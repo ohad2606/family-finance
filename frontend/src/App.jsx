@@ -8,6 +8,7 @@ import BudgetPage from './pages/BudgetPage'
 import RecurringPage from './pages/RecurringPage'
 import LoansPage from './pages/LoansPage'
 import SavingsPage from './pages/SavingsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 
 const queryClient = new QueryClient()
 
@@ -31,14 +32,16 @@ function BottomNav() {
   const tabs = [
     { path: '/', label: 'בית', icon: '⌂' },
     { path: '/transactions', label: 'תנועות', icon: '↕' },
-    { path: '/budget', label: 'תקציב', icon: '◎' },
+    { path: '/analytics', label: 'ניתוח', icon: '◑' },
     { path: '/savings', label: 'חיסכון', icon: '🎯' },
     { path: '/more', label: 'עוד', icon: '⋯' },
   ]
   return (
     <nav style={styles.nav}>
       {tabs.map(t => (
-        <button key={t.path} style={{ ...styles.navBtn, ...(pathname === t.path ? styles.navActive : {}) }} onClick={() => navigate(t.path)}>
+        <button key={t.path}
+          style={{ ...styles.navBtn, ...(pathname === t.path ? styles.navActive : {}) }}
+          onClick={() => navigate(t.path)}>
           <span style={{ fontSize: '1rem' }}>{t.icon}</span>
           <span style={{ fontSize: '0.6rem' }}>{t.label}</span>
         </button>
@@ -47,30 +50,30 @@ function BottomNav() {
   )
 }
 
-function MorePage({ onBack }) {
+function MorePage() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
-  const C2 = { paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E', line: '#D5D8CF', brass: '#C9A23F', expense: '#B0573C' }
   const items = [
+    { icon: '◎', label: 'תקציב', path: '/budget' },
     { icon: '↺', label: 'תשלומים חוזרים', path: '/recurring' },
     { icon: '🏦', label: 'הלוואות ומשכנתא', path: '/loans' },
   ]
   return (
-    <div style={{ minHeight: '100vh', background: C2.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 80 }}>
-      <header style={{ background: C2.card, borderBottom: `1px solid ${C2.line}`, padding: '1rem 1.25rem' }}>
-        <h1 style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C2.ink, margin: 0 }}>עוד</h1>
+    <div style={{ minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 80 }}>
+      <header style={{ background: C.card, borderBottom: `1px solid ${C.line}`, padding: '1rem 1.25rem' }}>
+        <h1 style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C.ink, margin: 0 }}>עוד</h1>
       </header>
       <main style={{ padding: '0.75rem 1rem', maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(item => (
           <button key={item.path} onClick={() => navigate(item.path)}
-            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem', background: C2.card, border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '1rem', color: C2.ink, fontWeight: 600, textAlign: 'right' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem', background: C.card, border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '1rem', color: C.ink, fontWeight: 600, textAlign: 'right' }}>
             <span style={{ fontSize: '1.3rem' }}>{item.icon}</span>
             <span style={{ flex: 1 }}>{item.label}</span>
-            <span style={{ color: C2.muted }}>›</span>
+            <span style={{ color: C.muted }}>›</span>
           </button>
         ))}
         <button onClick={signOut}
-          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem', background: C2.card, border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '1rem', color: C2.expense, fontWeight: 600, marginTop: 8 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '1rem', background: C.card, border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '1rem', color: '#B0573C', fontWeight: 600, marginTop: 8 }}>
           <span style={{ fontSize: '1.3rem' }}>⎋</span>
           <span>יציאה מהחשבון</span>
         </button>
@@ -89,8 +92,9 @@ function AppShell() {
         <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
         <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage onBack={() => navigate('/')} /></RequireAuth>} />
-        <Route path="/budget" element={<RequireAuth><BudgetPage onBack={() => navigate('/')} /></RequireAuth>} />
+        <Route path="/analytics" element={<RequireAuth><AnalyticsPage onBack={() => navigate('/')} /></RequireAuth>} />
         <Route path="/savings" element={<RequireAuth><SavingsPage onBack={() => navigate('/')} /></RequireAuth>} />
+        <Route path="/budget" element={<RequireAuth><BudgetPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/recurring" element={<RequireAuth><RecurringPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/loans" element={<RequireAuth><LoansPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/more" element={<RequireAuth><MorePage /></RequireAuth>} />

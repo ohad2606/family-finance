@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_household
-from app.models.finance import Account, Transaction
-from app.schemas.finance import DashboardSummary, CashflowMonth
+from app.models.finance import Account, Category, Transaction
+from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -120,3 +120,56 @@ async def cashflow(
         else:
             cur = cur.replace(month=cur.month + 1)
     return out
+
+
+@router.get("/spending", response_model=list[CategorySpend])
+async def spending_by_category(
+    month: date = Query(...),
+    kind: str = Query("expense"),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    month_start = month.replace(day=1)
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1)
+
+    result = await db.execute(
+        select(
+            Transaction.category_id,
+            func.sum(Transaction.amount).label("total"),
+        )
+        .where(
+            Transaction.household_id == household.id,
+            Transaction.kind == kind,
+            Transaction.transaction_date >= month_start,
+            Transaction.transaction_date < month_end,
+        )
+        .group_by(Transaction.category_id)
+        .order_by(func.sum(Transaction.amount).desc())
+    )
+    rows = result.all()
+    if not rows:
+        return []
+
+    total = sum(float(r.total) for r in rows)
+
+    # fetch category details
+    cat_ids = [r.category_id for r in rows if r.category_id]
+    cats = {}
+    if cat_ids:
+        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids)))
+        cats = {c.id: c for c in cat_result.scalars().all()}
+
+    return [
+        CategorySpend(
+            category_id=r.category_id,
+            category_name=cats[r.category_id].name if r.category_id and r.category_id in cats else "ללא קטגוריה",
+            category_icon=cats[r.category_id].icon if r.category_id and r.category_id in cats else None,
+            amount=round(float(r.total), 2),
+            pct=round(float(r.total) / total, 4) if total else 0,
+        )
+        for r in rows
+    ]

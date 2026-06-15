@@ -19,6 +19,7 @@ export const getBudget = (month) => api.get('/budgets', { params: { month } }).t
 export const upsertBudget = (data) => api.put('/budgets', data).then(r => r.data)
 
 export const getCashflow = (months = 6) => api.get('/dashboard/cashflow', { params: { months } }).then(r => r.data)
+export const getSpending = (month, kind = 'expense') => api.get('/dashboard/spending', { params: { month, kind } }).then(r => r.data)
 
 export const getRecurring = () => api.get('/recurring').then(r => r.data)
 export const createRecurring = (data) => api.post('/recurring', data).then(r => r.data)
