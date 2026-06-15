@@ -13,6 +13,7 @@ import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
 import HouseholdPage from './pages/HouseholdPage'
 import JoinPage from './pages/JoinPage'
+import ProfilePage from './pages/ProfilePage'
 
 const queryClient = new QueryClient()
 
@@ -64,6 +65,7 @@ function MorePage() {
     { icon: '⚙', label: 'הגדרות', path: '/settings' },
     { icon: '⬆', label: 'ייבוא CSV', path: '/import' },
     { icon: '👨‍👩‍👧', label: 'משק הבית', path: '/household' },
+    { icon: '◉', label: 'פרופיל', path: '/profile' },
   ]
   return (
     <div style={{ minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 80 }}>
@@ -109,6 +111,7 @@ function AppShell() {
         <Route path="/import" element={<RequireAuth><ImportPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/household" element={<RequireAuth><HouseholdPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/join" element={<JoinPage />} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage onBack={() => navigate('/more')} /></RequireAuth>} />
       </Routes>
       {user && pathname !== '/login' && <BottomNav />}
     </>

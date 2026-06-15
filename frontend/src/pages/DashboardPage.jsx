@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
@@ -22,10 +22,16 @@ export default function DashboardPage() {
   const [showTx, setShowTx] = useState(false)
   const [showAcc, setShowAcc] = useState(false)
 
+  const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
+
   const { data: summary, isLoading: sumLoading } = useQuery({ queryKey: ['dashboard-summary'], queryFn: getDashboardSummary })
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: transactions = [] } = useQuery({ queryKey: ['transactions', { limit: 10 }], queryFn: () => getTransactions({ limit: 10 }) })
   const { data: cashflow = [] } = useQuery({ queryKey: ['cashflow'], queryFn: () => getCashflow(6) })
+  const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr) })
+  const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
+
+  const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
   const thisMonth = new Date().toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
 
@@ -62,6 +68,48 @@ export default function DashboardPage() {
             <p style={{ ...styles.summaryValue, color: C.expense }}>{fmt(summary?.month_expense)}</p>
           </div>
         </div>
+
+        {/* Budget alert */}
+        {overBudget.length > 0 && (
+          <div style={styles.alertBanner} onClick={() => navigate('/budget')}>
+            <span style={{ fontSize: '1.1rem' }}>⚠</span>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontWeight: 700 }}>{overBudget.length} קטגוריות חרגו מהתקציב</span>
+              <span style={{ color: C.expense, fontWeight: 400, fontSize: '0.82rem', marginRight: 6 }}>
+                {overBudget.map(b => b.category_name).join(', ')}
+              </span>
+            </div>
+            <span style={{ color: C.muted }}>›</span>
+          </div>
+        )}
+
+        {/* Upcoming recurring */}
+        {upcoming.length > 0 && (
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>עומד לחיוב — 7 ימים</h2>
+              <button style={styles.addBtn} onClick={() => navigate('/recurring')}>הכל</button>
+            </div>
+            <div style={styles.txList}>
+              {upcoming.map(r => {
+                const daysLeft = Math.ceil((new Date(r.next_date) - new Date()) / 86400000)
+                return (
+                  <div key={r.id} style={styles.txRow}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={styles.txDesc}>{r.description || r.category_name || '—'}</p>
+                      <p style={styles.txMeta}>
+                        {r.next_date} · {daysLeft <= 0 ? 'היום' : daysLeft === 1 ? 'מחר' : `עוד ${daysLeft} ימים`}
+                      </p>
+                    </div>
+                    <p style={{ ...styles.txAmount, color: r.kind === 'income' ? C.income : C.expense }}>
+                      {r.kind === 'income' ? '+' : '-'}{fmt(r.amount)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Cashflow chart */}
         {cashflow.some(m => m.income > 0 || m.expense > 0) && (
@@ -146,6 +194,7 @@ const styles = {
   logo: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.4rem', color: C.ink, margin: 0 },
   userName: { color: C.muted, fontSize: '0.85rem' },
   logoutBtn: { padding: '0.35rem 0.75rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.muted, fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem' },
+  alertBanner: { background: '#FEF3C7', borderRadius: 14, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', border: '1px solid #FCD34D' },
   main: { padding: '1.25rem', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' },
   netWorthCard: { background: C.ink, borderRadius: 20, padding: '1.5rem', color: '#fff', textAlign: 'center' },
   netWorthLabel: { margin: 0, color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' },

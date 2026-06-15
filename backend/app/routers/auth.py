@@ -152,3 +152,39 @@ async def me(ctx: tuple = Depends(get_current_household), db: AsyncSession = Dep
         household_name=household.name,
         role=member.role,
     )
+
+
+@router.patch("/me", response_model=UserOut, dependencies=[Depends(verify_csrf)])
+async def update_me(body: dict, ctx: tuple = Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+    user, household = ctx
+    name = (body.get("display_name") or "").strip()
+    if not name:
+        raise HTTPException(400, "שם לא יכול להיות ריק")
+    result = await db.execute(select(User).where(User.id == user.id))
+    u = result.scalar_one()
+    u.display_name = name
+    await db.commit()
+    member_result = await db.execute(
+        select(HouseholdMember).where(HouseholdMember.user_id == u.id, HouseholdMember.household_id == household.id)
+    )
+    member = member_result.scalar_one()
+    return UserOut(id=u.id, email=u.email, display_name=u.display_name,
+                   household_id=household.id, household_name=household.name, role=member.role)
+
+
+@router.post("/change-password", dependencies=[Depends(verify_csrf)])
+async def change_password(body: dict, ctx: tuple = Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+    user, _ = ctx
+    result = await db.execute(select(User).where(User.id == user.id))
+    u = result.scalar_one()
+    if not u.password_hash:
+        raise HTTPException(400, "חשבון זה משתמש בגוגל — לא ניתן לשנות סיסמה")
+    current = (body.get("current_password") or "")
+    new_pw = (body.get("new_password") or "")
+    if not verify_password(current, u.password_hash):
+        raise HTTPException(400, "הסיסמה הנוכחית שגויה")
+    if len(new_pw) < 8:
+        raise HTTPException(400, "הסיסמה החדשה חייבת להכיל לפחות 8 תווים")
+    u.password_hash = hash_password(new_pw)
+    await db.commit()
+    return {"ok": True}
