@@ -1,13 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="110" fill="#1B2A27"/>
-  <!-- roof -->
-  <polygon points="256,64 448,234 64,234" fill="#C9A23F"/>
-  <!-- chimney -->
-  <rect x="308" y="100" width="44" height="66" rx="5" fill="#C9A23F"/>
-  <!-- house body -->
-  <rect x="80" y="226" width="352" height="228" rx="10" fill="#C9A23F" fill-opacity="0.15" stroke="#C9A23F" stroke-width="16"/>
-  <!-- door -->
-  <rect x="204" y="340" width="104" height="114" rx="10" fill="#C9A23F" fill-opacity="0.3" stroke="#C9A23F" stroke-width="8"/>
-  <!-- shekel -->
-  <text x="256" y="328" text-anchor="middle" font-family="Arial,sans-serif" font-size="116" font-weight="bold" fill="#C9A23F">₪</text>
+  <rect width="512" height="512" rx="106" fill="#1B2A27"/>
+  <polygon points="256,85 432,256 80,256" fill="#C9A23F"/>
+  <rect x="117" y="245" width="278" height="166" rx="10" fill="#C9A23F" fill-opacity="0.18" stroke="#C9A23F" stroke-width="16"/>
+  <text x="256" y="362" text-anchor="middle" font-family="Arial,sans-serif" font-size="117" font-weight="bold" fill="#C9A23F">₪</text>
 </svg>
