@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
   <rect width="192" height="192" rx="40" fill="#1B2A27"/>
-  <text x="96" y="130" font-family="Arial, sans-serif" font-size="110" font-weight="900" text-anchor="middle" fill="#C9A23F">ז</text>
+  <circle cx="96" cy="96" r="62" fill="none" stroke="#C9A23F" stroke-width="8"/>
+  <circle cx="96" cy="96" r="50" fill="#C9A23F" fill-opacity="0.1"/>
+  <text x="96" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="68" font-weight="bold" fill="#C9A23F">₪</text>
 </svg>
