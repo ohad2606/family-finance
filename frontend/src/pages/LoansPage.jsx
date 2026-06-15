@@ -298,7 +298,7 @@ const styles = {
   schedCol: { flex: 1, fontSize: '0.78rem', color: C.ink, fontVariantNumeric: 'tabular-nums' },
   // Sheet
   overlay: { position: 'fixed', inset: 0, background: 'rgba(27,42,39,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 100 },
-  sheet: { background: C.card, borderRadius: '22px 22px 0 0', padding: '1rem 1.5rem 2rem', width: '100%', maxWidth: 480, margin: '0 auto', fontFamily: 'Assistant, sans-serif', maxHeight: '90vh', overflowY: 'auto' },
+  sheet: { background: C.card, borderRadius: '22px 22px 0 0', padding: '1rem 1.5rem 2rem', width: '100%', maxWidth: 480, margin: '0 auto', fontFamily: 'Assistant, sans-serif', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' },
   handle: { width: 40, height: 4, background: C.line, borderRadius: 2, margin: '0 auto 1rem' },
   sheetTitle: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, color: C.ink, margin: '0 0 1rem', fontSize: '1.1rem' },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },

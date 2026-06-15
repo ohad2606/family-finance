@@ -56,8 +56,8 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <button style={styles.backLink} onClick={() => navigate('/welcome')}>← כספי</button>
-        <h1 style={styles.logo}>כספי</h1>
+        <button style={styles.backLink} onClick={() => navigate('/welcome')}>← תקציב</button>
+        <h1 style={styles.logo}>תקציב</h1>
         <p style={styles.tagline}>ניהול פיננסי משפחתי</p>
 
         {/* Google button */}

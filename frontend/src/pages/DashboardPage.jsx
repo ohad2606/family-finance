@@ -8,7 +8,7 @@ import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
-import KaspiLogo from '../components/KaspiLogo'
+import TakzivLogo from '../components/TakzivLogo'
 import DonutChart from '../components/DonutChart'
 
 const C = {
@@ -48,7 +48,7 @@ export default function DashboardPage() {
     <div style={styles.page}>
       {/* Header */}
       <header style={styles.header}>
-        <h1 style={styles.logo}><KaspiLogo size={30} /> כספי</h1>
+        <h1 style={styles.logo}><TakzivLogo size={30} /> תקציב</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={styles.userName}>{user?.display_name}</span>
           <button style={styles.logoutBtn} onClick={signOut}>יציאה</button>

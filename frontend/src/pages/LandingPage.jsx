@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import KaspiLogo from '../components/KaspiLogo'
+import TakzivLogo from '../components/TakzivLogo'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -28,7 +28,7 @@ export default function LandingPage() {
     <div style={s.page}>
       {/* Nav */}
       <header style={s.nav}>
-        <span style={s.navLogo}><KaspiLogo size={26} /> כספי</span>
+        <span style={s.navLogo}><TakzivLogo size={26} /> תקציב</span>
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={s.navBtn} onClick={() => navigate('/login')}>כניסה</button>
           <button style={s.navCta} onClick={() => navigate('/login?mode=register')}>התחל בחינם</button>
@@ -41,7 +41,7 @@ export default function LandingPage() {
           <p style={s.heroEyebrow}>ניהול פיננסי משפחתי</p>
           <h1 style={s.heroTitle}>הכסף שלך,<br />בשליטה שלך</h1>
           <p style={s.heroSub}>
-            כספי עוזר לך ולמשפחתך לעקוב אחרי הכנסות והוצאות,
+            תקציב עוזר לך ולמשפחתך לעקוב אחרי הכנסות והוצאות,
             לעמוד בתקציב ולבנות עתיד פיננסי יציב — בפשטות.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -138,8 +138,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer style={s.footer}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <KaspiLogo size={22} />
-          <span style={{ fontWeight: 700, color: C.ink }}>כספי</span>
+          <TakzivLogo size={22} />
+          <span style={{ fontWeight: 700, color: C.ink }}>תקציב</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <span style={{ color: C.muted, fontSize: '0.78rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © {new Date().getFullYear()}</span>

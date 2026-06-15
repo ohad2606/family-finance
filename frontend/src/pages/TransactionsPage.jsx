@@ -98,7 +98,7 @@ export default function TransactionsPage({ onBack }) {
       const url = URL.createObjectURL(resp.data)
       const a = document.createElement('a')
       a.href = url
-      a.download = `kaspi-${filters.from_date || 'all'}-${filters.to_date || 'all'}.csv`
+      a.download = `takziv-${filters.from_date || 'all'}-${filters.to_date || 'all'}.csv`
       a.click()
       URL.revokeObjectURL(url)
     } finally {

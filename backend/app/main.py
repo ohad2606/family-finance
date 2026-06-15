@@ -52,4 +52,4 @@ app.include_router(household.router, prefix="/api")
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "app": "zuzim"}
+    return {"status": "ok", "app": "takziv"}

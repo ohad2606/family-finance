@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useEffect, useRef, useState } from 'react'
-import KaspiLogo from './components/KaspiLogo'
+import TakzivLogo from './components/TakzivLogo'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
@@ -93,8 +93,8 @@ function MorePage() {
         </button>
         <footer style={{ marginTop: 24, paddingBottom: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <KaspiLogo size={20} />
-            <span style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: C.ink }}>כספי</span>
+            <TakzivLogo size={20} />
+            <span style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: C.ink }}>תקציב</span>
           </div>
           <span style={{ color: C.muted, fontSize: '0.75rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © {new Date().getFullYear()}</span>
           <a href="mailto:ohad2606@gmail.com" style={{ color: C.muted, fontSize: '0.75rem', textDecoration: 'none' }}>תמיכה: ohad2606@gmail.com</a>
@@ -152,7 +152,7 @@ function InstallBanner() {
         <p style={styles.installTitle}>הוסף למסך הבית</p>
         {showIos
           ? <p style={styles.installSub}>לחץ על <strong>שתף</strong> ← <strong>הוסף למסך הבית</strong></p>
-          : <p style={styles.installSub}>גישה מהירה לכספי ללא דפדפן</p>
+          : <p style={styles.installSub}>גישה מהירה לתקציב ללא דפדפן</p>
         }
       </div>
       {!showIos && (
