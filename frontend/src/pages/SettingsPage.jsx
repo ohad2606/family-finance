@@ -107,7 +107,7 @@ function AccountSheet({ acc, onClose }) {
   const save = useMutation({
     mutationFn: () => isEdit
       ? updateAccount(acc.id, { name: form.name, institution: form.institution || null })
-      : createAccount(form),
+      : createAccount({ ...form, opening_balance: parseFloat(form.opening_balance) || 0 }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['accounts'] }); onClose() },
   })
 
@@ -146,7 +146,7 @@ function AccountSheet({ acc, onClose }) {
           <>
             <label style={s.label}>יתרת פתיחה (₪)</label>
             <input style={s.input} type="number" value={form.opening_balance}
-              onChange={e => setForm(f => ({ ...f, opening_balance: parseFloat(e.target.value) || 0 }))}
+              onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
               placeholder="0" />
           </>
         )}
