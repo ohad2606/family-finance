@@ -18,13 +18,13 @@ const OAUTH_ERRORS = {
 }
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('mode') === 'register' ? 'register' : 'login')
   const [form, setForm] = useState({ email: '', password: '', display_name: '', household_name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
 
   useEffect(() => {
     const err = searchParams.get('error')

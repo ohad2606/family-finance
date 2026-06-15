@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { useEffect, useRef, useState } from 'react'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
@@ -92,6 +93,65 @@ function MorePage() {
   )
 }
 
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+const isInStandaloneMode = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+
+function InstallBanner() {
+  const [prompt, setPrompt] = useState(null)   // Android/Chrome deferred event
+  const [showIos, setShowIos] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (isInStandaloneMode() || localStorage.getItem('installDismissed')) return
+
+    if (isIos()) {
+      setShowIos(true)
+      setVisible(true)
+      return
+    }
+
+    const handler = (e) => {
+      e.preventDefault()
+      setPrompt(e)
+      setVisible(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const dismiss = () => {
+    setVisible(false)
+    localStorage.setItem('installDismissed', '1')
+  }
+
+  const install = async () => {
+    if (!prompt) return
+    prompt.prompt()
+    const { outcome } = await prompt.userChoice
+    if (outcome === 'accepted') setVisible(false)
+    setPrompt(null)
+  }
+
+  if (!visible) return null
+
+  return (
+    <div style={styles.installBanner}>
+      <span style={{ fontSize: '1.3rem' }}>📲</span>
+      <div style={{ flex: 1 }}>
+        <p style={styles.installTitle}>הוסף לסטמך הבית</p>
+        {showIos
+          ? <p style={styles.installSub}>לחץ על <strong>שתף</strong> ← <strong>הוסף למסך הבית</strong></p>
+          : <p style={styles.installSub}>גישה מהירה לכספי ללא דפדפן</p>
+        }
+      </div>
+      {!showIos && (
+        <button style={styles.installBtn} onClick={install}>התקן</button>
+      )}
+      <button style={styles.installClose} onClick={dismiss}>✕</button>
+    </div>
+  )
+}
+
 function AppShell() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -116,6 +176,7 @@ function AppShell() {
         <Route path="/profile" element={<RequireAuth><ProfilePage onBack={() => navigate('/more')} /></RequireAuth>} />
       </Routes>
       {user && pathname !== '/login' && <BottomNav />}
+      <InstallBanner />
     </>
   )
 }
@@ -136,4 +197,9 @@ const styles = {
   nav: { position: 'fixed', bottom: 0, left: 0, right: 0, background: C.card, borderTop: `1px solid ${C.line}`, display: 'flex', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
   navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, padding: '0.55rem 0', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontFamily: 'Assistant, sans-serif' },
   navActive: { color: C.brass },
+  installBanner: { position: 'fixed', bottom: 'calc(60px + env(safe-area-inset-bottom))', left: 12, right: 12, background: C.ink, color: '#fff', borderRadius: 16, padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: 10, zIndex: 60, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', fontFamily: 'Assistant, sans-serif', direction: 'rtl' },
+  installTitle: { margin: 0, fontWeight: 700, fontSize: '0.9rem' },
+  installSub: { margin: '2px 0 0', fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)' },
+  installBtn: { background: C.brass, color: '#fff', border: 'none', borderRadius: 10, padding: '0.45rem 0.9rem', fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', flexShrink: 0 },
+  installClose: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.9rem', padding: 4, flexShrink: 0 },
 }
