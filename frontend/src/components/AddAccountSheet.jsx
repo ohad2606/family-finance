@@ -14,6 +14,38 @@ const TYPES = [
 
 const IL_BANKS = ['בנק לאומי','בנק הפועלים','בנק דיסקונט','בנק מזרחי טפחות','בנק הבינלאומי','בנק ירושלים','בנק אוצר החייל','בנק מרכנתיל דיסקונט','בנק יהב','בנק פועלי אגודת ישראל','ONE ZERO','בנק הדואר','כרטיסי אשראי לישראל (כ.א.ל)','ישראכארט','מקס (לאומי קארד)','ויזה כ.א.ל','אמריקן אקספרס']
 
+function BankInput({ value, onChange }) {
+  const [focused, setFocused] = useState(false)
+  const suggestions = focused
+    ? IL_BANKS.filter(b => !value || b.includes(value)).slice(0, 5)
+    : []
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        style={styles.input}
+        placeholder="בנק / מוסד (אופציונלי)"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        autoComplete="off"
+      />
+      {suggestions.length > 0 && (
+        <div style={styles.suggestions}>
+          {suggestions.map(b => (
+            <button key={b} type="button" style={styles.suggestion}
+              onMouseDown={() => onChange(b)}
+              onTouchStart={() => onChange(b)}>
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AddAccountSheet({ onClose }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({ name: '', type: 'checking', institution: '', opening_balance: '', balanceNeg: false })
@@ -46,11 +78,10 @@ export default function AddAccountSheet({ onClose }) {
             {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
 
-          <input style={styles.input} list="il-banks-add" placeholder="בנק / מוסד (אופציונלי)"
-            value={form.institution} onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} />
-          <datalist id="il-banks-add">
-            {IL_BANKS.map(b => <option key={b} value={b} />)}
-          </datalist>
+          <BankInput
+            value={form.institution}
+            onChange={v => setForm(f => ({ ...f, institution: v }))}
+          />
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button type="button"
@@ -83,4 +114,6 @@ const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
   input: { padding: '0.7rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, textAlign: 'right', boxSizing: 'border-box', width: '100%' },
   btn: { padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  suggestions: { position: 'absolute', top: '100%', right: 0, left: 0, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, zIndex: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', overflow: 'hidden', marginTop: 2 },
+  suggestion: { display: 'block', width: '100%', padding: '0.65rem 1rem', background: 'none', border: 'none', textAlign: 'right', fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, cursor: 'pointer', borderBottom: `1px solid ${C.line}` },
 }
