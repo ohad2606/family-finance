@@ -166,7 +166,7 @@ async def refresh(response: Response, refresh_token: str | None = Cookie(default
     return {"ok": True}
 
 
-@router.post("/logout", dependencies=[Depends(verify_csrf)])
+@router.post("/logout")
 async def logout(response: Response):
     _clear_auth_cookies(response)
     return {"ok": True}

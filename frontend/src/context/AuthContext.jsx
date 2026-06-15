@@ -17,6 +17,7 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     try { await apiLogout() } catch {}
     queryClient.clear()
+    window.location.replace('/welcome')
   }
 
   return (
