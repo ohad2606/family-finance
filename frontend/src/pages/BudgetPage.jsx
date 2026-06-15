@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getBudget, upsertBudget, getCategories } from '../api/finance'
+import { useNavigate } from 'react-router-dom'
+import { getBudget, upsertBudget, getCategories, copyBudget } from '../api/finance'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -32,10 +33,12 @@ function nextMonth(str) {
 
 export default function BudgetPage({ onBack }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [month, setMonth] = useState(toMonthStr(new Date()))
   const [editing, setEditing] = useState(null) // { category_id, category_name, category_icon, amount_planned }
   const [editVal, setEditVal] = useState('')
   const [showAddCat, setShowAddCat] = useState(false)
+  const [copying, setCopying] = useState(false)
 
   const { data: lines = [], isLoading } = useQuery({
     queryKey: ['budget', month],
@@ -72,6 +75,28 @@ export default function BudgetPage({ onBack }) {
     })
   }
 
+  const handleCopyFromPrev = async () => {
+    if (copying) return
+    setCopying(true)
+    try {
+      const result = await copyBudget(prevMonth(month), month)
+      if (result.copied > 0) {
+        qc.invalidateQueries({ queryKey: ['budget', month] })
+      }
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  const goToCategoryTx = (line) => {
+    const [y, m] = month.split('-')
+    const from = `${y}-${m}-01`
+    const nextM = nextMonth(month)
+    const [ny, nm] = nextM.split('-')
+    const to = new Date(parseInt(ny), parseInt(nm) - 1, 0).toISOString().slice(0, 10)
+    navigate(`/transactions?category_id=${line.category_id}&from_date=${from}&to_date=${to}`)
+  }
+
   // cats not yet in budget lines
   const unbudgetedCats = expenseCats.filter(c => !lines.find(l => l.category_id === c.id))
 
@@ -80,6 +105,9 @@ export default function BudgetPage({ onBack }) {
       <header style={styles.header}>
         <button style={styles.backBtn} onClick={onBack}>→</button>
         <h1 style={styles.title}>תקציב</h1>
+        <button style={styles.copyBtn} onClick={handleCopyFromPrev} disabled={copying} title="העתק תקציב מהחודש הקודם">
+          {copying ? '...' : '⇅ העתק'}
+        </button>
         <button style={styles.addBtn} onClick={() => setShowAddCat(true)}>+ קטגוריה</button>
       </header>
 
@@ -133,8 +161,8 @@ export default function BudgetPage({ onBack }) {
               const over = line.amount_planned > 0 && line.amount_actual > line.amount_planned
               const barColor = over ? C.expense : pct > 0.8 ? C.warn : C.income
               return (
-                <div key={line.category_id} style={styles.lineCard} onClick={() => openEdit(line)}>
-                  <div style={styles.lineTop}>
+                <div key={line.category_id} style={styles.lineCard}>
+                  <div style={styles.lineTop} onClick={() => openEdit(line)}>
                     <span style={styles.lineIcon}>{line.category_icon || '📁'}</span>
                     <span style={styles.lineName}>{line.category_name}</span>
                     <div style={{ textAlign: 'left' }}>
@@ -143,6 +171,11 @@ export default function BudgetPage({ onBack }) {
                         <span style={styles.linePlanned}> / {fmt(line.amount_planned)}</span>
                       )}
                     </div>
+                    <button
+                      style={styles.txLinkBtn}
+                      onClick={e => { e.stopPropagation(); goToCategoryTx(line) }}
+                      title="ראה תנועות"
+                    >›</button>
                   </div>
                   {line.amount_planned > 0 && (
                     <div style={styles.barTrack}>
@@ -221,6 +254,8 @@ const styles = {
   backBtn: { background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: C.muted, padding: '0 4px' },
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C.ink, margin: 0, flex: 1 },
   addBtn: { padding: '0.35rem 0.85rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.brass, fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Assistant, sans-serif' },
+  copyBtn: { padding: '0.35rem 0.75rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.muted, fontSize: '0.82rem', fontFamily: 'Assistant, sans-serif' },
+  txLinkBtn: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '1.1rem', padding: '0 2px', lineHeight: 1, flexShrink: 0 },
   monthNav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1.25rem', background: C.card, borderBottom: `1px solid ${C.line}` },
   monthBtn: { background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: C.muted, padding: '0 8px' },
   monthLabel: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, color: C.ink, fontSize: '1rem' },

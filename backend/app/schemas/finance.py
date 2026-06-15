@@ -235,6 +235,10 @@ class BudgetLineOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BudgetCopyResult(BaseModel):
+    copied: int
+
+
 # --- Dashboard ---
 
 class CategorySpend(BaseModel):

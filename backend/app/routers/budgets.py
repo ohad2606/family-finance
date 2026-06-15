@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.deps import get_current_household, verify_csrf
 from app.models.finance import Budget, Category, Transaction
-from app.schemas.finance import BudgetUpsert, BudgetLineOut
+from app.schemas.finance import BudgetUpsert, BudgetLineOut, BudgetCopyResult
 
 router = APIRouter(prefix="/budgets", tags=["budgets"])
 
@@ -134,3 +134,48 @@ async def upsert_budget(
         amount_planned=body.amount_planned,
         amount_actual=actual,
     )
+
+
+@router.post("/copy", response_model=BudgetCopyResult, dependencies=[Depends(verify_csrf)])
+async def copy_budget(
+    from_month: date = Query(...),
+    to_month: date = Query(...),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    from_start = _first_of_month(from_month)
+    to_start = _first_of_month(to_month)
+
+    source_result = await db.execute(
+        select(Budget).where(
+            Budget.household_id == household.id,
+            Budget.month == from_start,
+            Budget.amount_planned > 0,
+        )
+    )
+    source_budgets = source_result.scalars().all()
+
+    copied = 0
+    for src in source_budgets:
+        existing_result = await db.execute(
+            select(Budget).where(
+                Budget.household_id == household.id,
+                Budget.category_id == src.category_id,
+                Budget.month == to_start,
+            )
+        )
+        target = existing_result.scalar_one_or_none()
+        if target:
+            target.amount_planned = src.amount_planned
+        else:
+            db.add(Budget(
+                household_id=household.id,
+                category_id=src.category_id,
+                month=to_start,
+                amount_planned=src.amount_planned,
+            ))
+        copied += 1
+
+    await db.commit()
+    return BudgetCopyResult(copied=copied)

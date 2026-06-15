@@ -69,6 +69,24 @@ export default function TransactionsPage({ onBack }) {
 
   const filteredCats = filters.kind ? categories.filter(c => c.kind === filters.kind) : categories
 
+  // Group transactions by date
+  const grouped = transactions.reduce((acc, tx) => {
+    const d = tx.transaction_date
+    if (!acc[d]) acc[d] = []
+    acc[d].push(tx)
+    return acc
+  }, {})
+  const groupedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
+
+  const dateLabel = (dateStr) => {
+    const today = new Date(); today.setHours(0,0,0,0)
+    const d = new Date(dateStr + 'T00:00:00'); d.setHours(0,0,0,0)
+    const diff = Math.round((today - d) / 86400000)
+    if (diff === 0) return 'היום'
+    if (diff === 1) return 'אתמול'
+    return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'short' })
+  }
+
   async function doExport() {
     setExporting(true)
     try {
@@ -143,21 +161,28 @@ export default function TransactionsPage({ onBack }) {
           </div>
         ) : (
           <>
-            <div style={styles.list}>
-              {transactions.map(tx => (
-                <div key={tx.id} style={styles.row} onClick={() => setEditing(tx)}>
-                  <div style={styles.rowIcon}>
-                    <span style={{ fontSize: '1.1rem' }}>{tx.category_icon || (tx.kind === 'income' ? '💰' : '💸')}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={styles.desc}>{tx.description || tx.category_name || '—'}</p>
-                    <p style={styles.meta}>{tx.account_name} · {new Date(tx.transaction_date).toLocaleDateString('he-IL')}</p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <p style={{ ...styles.amount, color: tx.kind === 'income' ? C.income : C.expense }}>
-                      {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
-                    </p>
-                    <button style={styles.deleteBtn} onClick={e => { e.stopPropagation(); setConfirmDelete(tx) }}>✕</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {groupedDates.map(dateStr => (
+                <div key={dateStr}>
+                  <p style={styles.dateHeader}>{dateLabel(dateStr)}</p>
+                  <div style={styles.list}>
+                    {grouped[dateStr].map(tx => (
+                      <div key={tx.id} style={styles.row} onClick={() => setEditing(tx)}>
+                        <div style={styles.rowIcon}>
+                          <span style={{ fontSize: '1.1rem' }}>{tx.category_icon || (tx.kind === 'income' ? '💰' : '💸')}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={styles.desc}>{tx.description || tx.category_name || '—'}</p>
+                          <p style={styles.meta}>{tx.account_name}{tx.category_name ? ` · ${tx.category_name}` : ''}</p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <p style={{ ...styles.amount, color: tx.kind === 'income' ? C.income : C.expense }}>
+                            {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                          </p>
+                          <button style={styles.deleteBtn} onClick={e => { e.stopPropagation(); setConfirmDelete(tx) }}>✕</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -208,6 +233,7 @@ const styles = {
   dateInput: { flex: 1, padding: '0.5rem 0.6rem', border: `1px solid ${C.line}`, borderRadius: 8, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem', color: C.ink },
   clearBtn: { padding: '0.4rem 0.75rem', border: 'none', borderRadius: 8, background: C.muted, color: '#fff', cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.78rem', whiteSpace: 'nowrap' },
   main: { padding: '0.75rem 1rem', maxWidth: 600, margin: '0 auto' },
+  dateHeader: { margin: '0 0 4px 0', fontSize: '0.75rem', fontWeight: 700, color: C.muted, padding: '0 4px', textTransform: 'uppercase', letterSpacing: 0.5 },
   list: { background: C.card, borderRadius: 16, overflow: 'hidden' },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '0.75rem 1rem', borderBottom: `1px solid ${C.line}`, cursor: 'pointer' },
   rowIcon: { width: 36, height: 36, borderRadius: '50%', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },

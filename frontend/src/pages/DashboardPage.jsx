@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth })
   const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
   const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
+  const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -189,6 +190,42 @@ export default function DashboardPage() {
             </div>
           </section>
         )}
+
+        {/* Loans */}
+        {loans.filter(l => l.is_active).length > 0 && (() => {
+          const activeLoans = loans.filter(l => l.is_active)
+          const totalMonthly = activeLoans.reduce((s, l) => s + l.monthly_payment, 0)
+          const totalRemaining = activeLoans.reduce((s, l) => s + l.balance_remaining, 0)
+          const TYPE_ICONS = { mortgage: '🏠', personal: '💳', car: '🚗', student: '🎓', other: '📄' }
+          return (
+            <section style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>הלוואות</h2>
+                <button style={styles.addBtn} onClick={() => navigate('/loans')}>הכל</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px 10px', borderBottom: `1px solid ${C.line}`, marginBottom: 10 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>תשלום חודשי כולל</p>
+                  <p style={{ margin: '2px 0 0', fontFamily: 'Heebo', fontWeight: 700, color: C.expense, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalMonthly)}</p>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>יתרה לפירעון</p>
+                  <p style={{ margin: '2px 0 0', fontFamily: 'Heebo', fontWeight: 700, color: C.ink, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalRemaining)}</p>
+                </div>
+              </div>
+              {activeLoans.slice(0, 3).map(l => (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: `1px solid ${C.line}` }}>
+                  <span style={{ fontSize: '1rem' }}>{TYPE_ICONS[l.loan_type] || '📄'}</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: C.ink }}>{l.name}</p>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>{l.months_remaining} חודשים נותרו</p>
+                  </div>
+                  <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '0.88rem', color: C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmt(l.monthly_payment)}/חד׳</p>
+                </div>
+              ))}
+            </section>
+          )
+        })()}
 
         {/* Accounts */}
         <section style={styles.section}>

@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     generate_csrf_token,
     hash_password,
     verify_password,
@@ -126,6 +128,40 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
         household_name=household.name,
         role=member.role,
     )
+
+
+@router.post("/refresh")
+async def refresh(response: Response, refresh_token: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    creds_error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="לא מחובר")
+    if not refresh_token:
+        raise creds_error
+    try:
+        payload = decode_token(refresh_token)
+        if payload.get("type") != "refresh":
+            raise creds_error
+        user_id = int(payload.get("sub"))
+    except (JWTError, TypeError, ValueError):
+        raise creds_error
+
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise creds_error
+
+    member_result = await db.execute(
+        select(HouseholdMember)
+        .where(HouseholdMember.user_id == user.id)
+        .limit(1)
+    )
+    member = member_result.scalar_one_or_none()
+    if not member:
+        raise creds_error
+
+    new_access = create_access_token(str(user.id), member.household_id)
+    new_refresh = create_refresh_token(str(user.id))
+    csrf = generate_csrf_token()
+    _set_auth_cookies(response, new_access, new_refresh, csrf)
+    return {"ok": True}
 
 
 @router.post("/logout", dependencies=[Depends(verify_csrf)])
