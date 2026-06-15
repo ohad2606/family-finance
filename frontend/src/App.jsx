@@ -98,7 +98,7 @@ function MorePage() {
           </div>
           <span style={{ color: C.muted, fontSize: '0.75rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © {new Date().getFullYear()}</span>
           <a href="mailto:ohad2606@gmail.com" style={{ color: C.muted, fontSize: '0.75rem', textDecoration: 'none' }}>תמיכה: ohad2606@gmail.com</a>
-          <span style={{ color: C.muted, fontSize: '0.65rem', opacity: 0.6 }}>v {__BUILD_DATE__}</span>
+          <span style={{ color: C.muted, fontSize: '0.65rem', opacity: 0.6 }}>v 0.1 · {__BUILD_DATE__}</span>
         </footer>
       </main>
     </div>
