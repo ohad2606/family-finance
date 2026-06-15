@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
+import DonutChart from '../components/DonutChart'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -34,6 +35,8 @@ export default function DashboardPage() {
   const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
   const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12) })
   const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth })
+  const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
+  const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -139,6 +142,51 @@ export default function DashboardPage() {
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>תזרים 6 חודשים</h2>
             <CashflowChart data={cashflow} />
+          </section>
+        )}
+
+        {/* Spending by category */}
+        {spending.length > 0 && (
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>הוצאות לפי קטגוריה — {thisMonth}</h2>
+              <button style={styles.addBtn} onClick={() => navigate('/analytics')}>פירוט</button>
+            </div>
+            <DonutChart data={spending} size={160} />
+          </section>
+        )}
+
+        {/* Savings goals */}
+        {savingsGoals.filter(g => !g.is_completed).length > 0 && (
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>יעדי חיסכון</h2>
+              <button style={styles.addBtn} onClick={() => navigate('/savings')}>הכל</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {savingsGoals.filter(g => !g.is_completed).slice(0, 3).map(g => {
+                const pct = Math.min(g.pct * 100, 100)
+                return (
+                  <div key={g.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                      <span style={{ fontWeight: 600, color: C.ink, fontSize: '0.9rem' }}>{g.icon} {g.name}</span>
+                      <span style={{ fontSize: '0.8rem', color: C.muted, fontFamily: 'Heebo', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmt(g.current_amount)} / {fmt(g.target_amount)}
+                      </span>
+                    </div>
+                    <div style={{ background: C.line, borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                      <div style={{ background: g.color || C.brass, borderRadius: 6, height: 8, width: `${pct}%`, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                      <span style={{ fontSize: '0.7rem', color: C.muted }}>{Math.round(pct)}%</span>
+                      {g.months_left != null && (
+                        <span style={{ fontSize: '0.7rem', color: C.muted }}>עוד {g.months_left} חודשים</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </section>
         )}
 
