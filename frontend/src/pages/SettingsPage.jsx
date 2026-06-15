@@ -101,13 +101,14 @@ function AccountSheet({ acc, onClose }) {
     name: acc?.name ?? '',
     type: acc?.type ?? 'checking',
     institution: acc?.institution ?? '',
-    opening_balance: acc?.opening_balance ?? 0,
+    opening_balance: Math.abs(acc?.opening_balance ?? 0),
+    balanceNeg: (acc?.opening_balance ?? 0) < 0,
   })
 
   const save = useMutation({
     mutationFn: () => isEdit
       ? updateAccount(acc.id, { name: form.name, institution: form.institution || null })
-      : createAccount({ ...form, opening_balance: parseFloat(form.opening_balance) || 0 }),
+      : createAccount({ ...form, opening_balance: (form.balanceNeg ? -1 : 1) * (parseFloat(form.opening_balance) || 0) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['accounts'] }); onClose() },
   })
 
@@ -145,9 +146,17 @@ function AccountSheet({ acc, onClose }) {
         {!isEdit && (
           <>
             <label style={s.label}>יתרת פתיחה (₪)</label>
-            <input style={s.input} type="number" value={form.opening_balance}
-              onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
-              placeholder="0" />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button type="button"
+                style={{ flexShrink: 0, width: 44, height: 44, border: 'none', borderRadius: 10, background: form.balanceNeg ? C.expense : C.income, color: '#fff', fontSize: '1.3rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => setForm(f => ({ ...f, balanceNeg: !f.balanceNeg }))}>
+                {form.balanceNeg ? '−' : '+'}
+              </button>
+              <input style={{ ...s.input, margin: 0, flex: 1 }} type="number" inputMode="decimal"
+                value={form.opening_balance || ''}
+                onChange={e => setForm(f => ({ ...f, opening_balance: parseFloat(e.target.value) || 0 }))}
+                placeholder="0" min="0" step="0.01" />
+            </div>
           </>
         )}
 
