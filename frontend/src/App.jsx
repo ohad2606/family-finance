@@ -9,6 +9,7 @@ import RecurringPage from './pages/RecurringPage'
 import LoansPage from './pages/LoansPage'
 import SavingsPage from './pages/SavingsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import SettingsPage from './pages/SettingsPage'
 
 const queryClient = new QueryClient()
 
@@ -57,6 +58,7 @@ function MorePage() {
     { icon: '◎', label: 'תקציב', path: '/budget' },
     { icon: '↺', label: 'תשלומים חוזרים', path: '/recurring' },
     { icon: '🏦', label: 'הלוואות ומשכנתא', path: '/loans' },
+    { icon: '⚙', label: 'הגדרות', path: '/settings' },
   ]
   return (
     <div style={{ minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 80 }}>
@@ -98,6 +100,7 @@ function AppShell() {
         <Route path="/recurring" element={<RequireAuth><RecurringPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/loans" element={<RequireAuth><LoansPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/more" element={<RequireAuth><MorePage /></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth><SettingsPage onBack={() => navigate('/more')} /></RequireAuth>} />
       </Routes>
       {user && pathname !== '/login' && <BottomNav />}
     </>
