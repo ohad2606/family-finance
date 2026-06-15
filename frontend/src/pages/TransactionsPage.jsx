@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { getTransactions, deleteTransaction, getAccounts, getCategories } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import EditTransactionSheet from '../components/EditTransactionSheet'
+import api from '../api/client'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -15,16 +17,26 @@ const PAGE = 20
 
 export default function TransactionsPage({ onBack }) {
   const qc = useQueryClient()
-  const [filters, setFilters] = useState({ kind: '', account_id: '', category_id: '', from_date: '', to_date: '', q: '' })
+  const [urlParams] = useSearchParams()
+
+  const [filters, setFilters] = useState({
+    kind: urlParams.get('kind') ?? '',
+    account_id: urlParams.get('account_id') ?? '',
+    category_id: urlParams.get('category_id') ?? '',
+    from_date: urlParams.get('from_date') ?? '',
+    to_date: urlParams.get('to_date') ?? '',
+    q: '',
+  })
   const [page, setPage] = useState(0)
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: getCategories })
 
-  const params = {
+  const serverParams = {
     limit: PAGE,
     offset: page * PAGE,
     ...(filters.kind && { kind: filters.kind }),
@@ -32,11 +44,12 @@ export default function TransactionsPage({ onBack }) {
     ...(filters.category_id && { category_id: parseInt(filters.category_id) }),
     ...(filters.from_date && { from_date: filters.from_date }),
     ...(filters.to_date && { to_date: filters.to_date }),
+    ...(filters.q && { q: filters.q }),
   }
 
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['transactions', params],
-    queryFn: () => getTransactions(params),
+    queryKey: ['transactions', serverParams],
+    queryFn: () => getTransactions(serverParams),
     keepPreviousData: true,
   })
 
@@ -51,18 +64,38 @@ export default function TransactionsPage({ onBack }) {
   })
 
   const setFilter = k => e => { setFilters(f => ({ ...f, [k]: e.target.value })); setPage(0) }
+  const hasFilters = filters.kind || filters.account_id || filters.category_id || filters.from_date || filters.to_date || filters.q
+  const clearFilters = () => { setFilters({ kind: '', account_id: '', category_id: '', from_date: '', to_date: '', q: '' }); setPage(0) }
 
   const filteredCats = filters.kind ? categories.filter(c => c.kind === filters.kind) : categories
 
-  const displayed = filters.q
-    ? transactions.filter(tx => (tx.description || '').includes(filters.q) || (tx.category_name || '').includes(filters.q))
-    : transactions
+  async function doExport() {
+    setExporting(true)
+    try {
+      const exportParams = { ...serverParams }
+      delete exportParams.limit
+      delete exportParams.offset
+      const qs = new URLSearchParams(Object.entries(exportParams).filter(([,v]) => v != null && v !== '')).toString()
+      const resp = await api.get(`/transactions/export${qs ? '?' + qs : ''}`, { responseType: 'blob' })
+      const url = URL.createObjectURL(resp.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `zuzim-${filters.from_date || 'all'}-${filters.to_date || 'all'}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <button style={styles.backBtn} onClick={onBack}>→</button>
         <h1 style={styles.title}>תנועות</h1>
+        <button style={styles.exportBtn} onClick={doExport} disabled={exporting} title="ייצוא CSV">
+          {exporting ? '...' : '⬇ CSV'}
+        </button>
         <button style={styles.addBtn} onClick={() => setShowAdd(true)}>+ הוסף</button>
       </header>
 
@@ -70,7 +103,7 @@ export default function TransactionsPage({ onBack }) {
       <div style={styles.filtersWrap}>
         <input
           style={styles.searchInput}
-          placeholder="חיפוש תיאור / קטגוריה..."
+          placeholder="🔍 חיפוש בתיאור..."
           value={filters.q}
           onChange={setFilter('q')}
         />
@@ -91,12 +124,10 @@ export default function TransactionsPage({ onBack }) {
         </div>
         <div style={styles.filterRow}>
           <input style={styles.dateInput} type="date" value={filters.from_date} onChange={setFilter('from_date')} />
-          <span style={{ color: C.muted, alignSelf: 'center' }}>—</span>
+          <span style={{ color: C.muted, alignSelf: 'center', flexShrink: 0 }}>—</span>
           <input style={styles.dateInput} type="date" value={filters.to_date} onChange={setFilter('to_date')} />
-          {(filters.kind || filters.account_id || filters.category_id || filters.from_date || filters.to_date || filters.q) && (
-            <button style={styles.clearBtn} onClick={() => { setFilters({ kind: '', account_id: '', category_id: '', from_date: '', to_date: '', q: '' }); setPage(0) }}>
-              נקה
-            </button>
+          {hasFilters && (
+            <button style={styles.clearBtn} onClick={clearFilters}>נקה</button>
           )}
         </div>
       </div>
@@ -105,15 +136,15 @@ export default function TransactionsPage({ onBack }) {
       <main style={styles.main}>
         {isLoading ? (
           <p style={styles.empty}>טוען...</p>
-        ) : displayed.length === 0 ? (
+        ) : transactions.length === 0 ? (
           <div style={styles.emptyCard}>
-            <p style={styles.empty}>אין תנועות</p>
-            <button style={styles.emptyAction} onClick={() => setShowAdd(true)}>הוסף תנועה</button>
+            <p style={styles.empty}>{hasFilters ? 'אין תנועות לפי הסינון' : 'אין תנועות'}</p>
+            {!hasFilters && <button style={styles.emptyAction} onClick={() => setShowAdd(true)}>הוסף תנועה</button>}
           </div>
         ) : (
           <>
             <div style={styles.list}>
-              {displayed.map(tx => (
+              {transactions.map(tx => (
                 <div key={tx.id} style={styles.row} onClick={() => setEditing(tx)}>
                   <div style={styles.rowIcon}>
                     <span style={{ fontSize: '1.1rem' }}>{tx.category_icon || (tx.kind === 'income' ? '💰' : '💸')}</span>
@@ -132,11 +163,10 @@ export default function TransactionsPage({ onBack }) {
               ))}
             </div>
 
-            {/* Pagination */}
             <div style={styles.pagination}>
-              <button style={styles.pageBtn} disabled={page === 0} onClick={() => setPage(p => p - 1)}>הקודם</button>
+              <button style={styles.pageBtn} disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹ הקודם</button>
               <span style={{ color: C.muted, fontSize: '0.85rem' }}>עמוד {page + 1}</span>
-              <button style={styles.pageBtn} disabled={transactions.length < PAGE} onClick={() => setPage(p => p + 1)}>הבא</button>
+              <button style={styles.pageBtn} disabled={transactions.length < PAGE} onClick={() => setPage(p => p + 1)}>הבא ›</button>
             </div>
           </>
         )}
@@ -166,16 +196,17 @@ export default function TransactionsPage({ onBack }) {
 
 const styles = {
   page: { minHeight: '100vh', background: C.paper, fontFamily: 'Assistant, sans-serif', direction: 'rtl', paddingBottom: 40 },
-  header: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 },
+  header: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: 8, position: 'sticky', top: 0, zIndex: 10 },
   backBtn: { background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: C.muted, padding: '0 4px' },
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C.ink, margin: 0, flex: 1 },
-  addBtn: { padding: '0.35rem 0.85rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.brass, fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Assistant, sans-serif' },
+  exportBtn: { padding: '0.3rem 0.7rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.muted, fontFamily: 'Assistant, sans-serif', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' },
+  addBtn: { padding: '0.3rem 0.8rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.brass, fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Assistant, sans-serif', whiteSpace: 'nowrap' },
   filtersWrap: { padding: '0.75rem 1rem', background: C.card, borderBottom: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', gap: 8 },
-  searchInput: { padding: '0.6rem 1rem', border: `1px solid ${C.line}`, borderRadius: 10, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.9rem', color: C.ink, textAlign: 'right', outline: 'none' },
+  searchInput: { padding: '0.6rem 1rem', border: `1px solid ${C.line}`, borderRadius: 10, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.9rem', color: C.ink, textAlign: 'right', outline: 'none', width: '100%', boxSizing: 'border-box' },
   filterRow: { display: 'flex', gap: 8, alignItems: 'center' },
-  filterSelect: { flex: 1, padding: '0.5rem 0.75rem', border: `1px solid ${C.line}`, borderRadius: 8, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.82rem', color: C.ink, textAlign: 'right' },
-  dateInput: { flex: 1, padding: '0.5rem 0.75rem', border: `1px solid ${C.line}`, borderRadius: 8, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.82rem', color: C.ink },
-  clearBtn: { padding: '0.4rem 0.75rem', border: 'none', borderRadius: 8, background: C.expense, color: '#fff', cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem', whiteSpace: 'nowrap' },
+  filterSelect: { flex: 1, padding: '0.5rem 0.6rem', border: `1px solid ${C.line}`, borderRadius: 8, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem', color: C.ink },
+  dateInput: { flex: 1, padding: '0.5rem 0.6rem', border: `1px solid ${C.line}`, borderRadius: 8, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.8rem', color: C.ink },
+  clearBtn: { padding: '0.4rem 0.75rem', border: 'none', borderRadius: 8, background: C.muted, color: '#fff', cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.78rem', whiteSpace: 'nowrap' },
   main: { padding: '0.75rem 1rem', maxWidth: 600, margin: '0 auto' },
   list: { background: C.card, borderRadius: 16, overflow: 'hidden' },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '0.75rem 1rem', borderBottom: `1px solid ${C.line}`, cursor: 'pointer' },

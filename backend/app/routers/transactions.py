@@ -1,8 +1,12 @@
+import csv
+import io
 from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -31,6 +35,27 @@ def _to_out(t: Transaction) -> TransactionOut:
     )
 
 
+_LOAD = [selectinload(Transaction.account), selectinload(Transaction.category)]
+
+
+def _filters(household_id, from_date, to_date, account_id, category_id, kind, q):
+    f = [Transaction.household_id == household_id]
+    if from_date:
+        f.append(Transaction.transaction_date >= from_date)
+    if to_date:
+        f.append(Transaction.transaction_date <= to_date)
+    if account_id:
+        f.append(Transaction.account_id == account_id)
+    if category_id:
+        f.append(Transaction.category_id == category_id)
+    if kind:
+        f.append(Transaction.kind == kind)
+    if q:
+        term = f"%{q}%"
+        f.append(Transaction.description.ilike(term))
+    return f
+
+
 @router.get("", response_model=list[TransactionOut])
 async def list_transactions(
     ctx=Depends(get_current_household),
@@ -40,31 +65,62 @@ async def list_transactions(
     account_id: Optional[int] = Query(None),
     category_id: Optional[int] = Query(None),
     kind: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
 ):
     _, household = ctx
-    filters = [Transaction.household_id == household.id]
-    if from_date:
-        filters.append(Transaction.transaction_date >= from_date)
-    if to_date:
-        filters.append(Transaction.transaction_date <= to_date)
-    if account_id:
-        filters.append(Transaction.account_id == account_id)
-    if category_id:
-        filters.append(Transaction.category_id == category_id)
-    if kind:
-        filters.append(Transaction.kind == kind)
-
     result = await db.execute(
         select(Transaction)
-        .where(and_(*filters))
+        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q)))
         .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
         .limit(limit).offset(offset)
-        .options(__import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.account),
-                 __import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.category))
+        .options(*_LOAD)
     )
     return [_to_out(t) for t in result.scalars().all()]
+
+
+@router.get("/export")
+async def export_transactions(
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+    from_date: Optional[date] = Query(None),
+    to_date: Optional[date] = Query(None),
+    account_id: Optional[int] = Query(None),
+    category_id: Optional[int] = Query(None),
+    kind: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100),
+):
+    _, household = ctx
+    result = await db.execute(
+        select(Transaction)
+        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q)))
+        .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
+        .limit(5000)
+        .options(*_LOAD)
+    )
+    rows = result.scalars().all()
+
+    buf = io.StringIO()
+    buf.write('﻿')  # UTF-8 BOM for Excel
+    writer = csv.writer(buf)
+    writer.writerow(['תאריך', 'תיאור', 'קטגוריה', 'סוג', 'סכום', 'חשבון'])
+    for t in rows:
+        writer.writerow([
+            t.transaction_date.isoformat(),
+            t.description or '',
+            t.category.name if t.category else '',
+            'הכנסה' if t.kind == 'income' else 'הוצאה',
+            float(t.amount),
+            t.account.name if t.account else '',
+        ])
+
+    filename = f"zuzim-{from_date or 'all'}-{to_date or 'all'}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("", response_model=TransactionOut, status_code=201, dependencies=[Depends(verify_csrf)])
@@ -81,10 +137,7 @@ async def create_transaction(body: TransactionCreate, ctx=Depends(get_current_ho
     await db.commit()
 
     result = await db.execute(
-        select(Transaction)
-        .where(Transaction.id == t.id)
-        .options(__import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.account),
-                 __import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.category))
+        select(Transaction).where(Transaction.id == t.id).options(*_LOAD)
     )
     return _to_out(result.scalar_one())
 
@@ -95,8 +148,7 @@ async def update_transaction(tx_id: int, body: TransactionUpdate, ctx=Depends(ge
     result = await db.execute(
         select(Transaction)
         .where(Transaction.id == tx_id, Transaction.household_id == household.id)
-        .options(__import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.account),
-                 __import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Transaction.category))
+        .options(*_LOAD)
     )
     t = result.scalar_one_or_none()
     if not t:
