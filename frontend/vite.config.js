@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.svg', 'icon-512.svg'],
       manifest: {
-        name: 'זוזים — ניהול פיננסי משפחתי',
-        short_name: 'זוזים',
+        name: 'כספי — ניהול פיננסי משפחתי',
+        short_name: 'כספי',
         description: 'ניהול פיננסי חכם למשפחה',
         theme_color: '#1B2A27',
         background_color: '#E9EBE4',

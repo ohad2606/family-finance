@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title="זוזים API",
+    title="כספי API",
     version="0.1.0",
     docs_url="/api/docs" if not settings.is_production else None,
     lifespan=lifespan,

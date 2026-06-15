@@ -21,7 +21,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-FRONTEND_URL = "https://myzuzim.net"
+FRONTEND_URL = "https://family-finance.net"
 STATE_COOKIE = "oauth_state"
 _COOKIE = dict(httponly=True, secure=True, samesite="strict", path="/")
 _STATE_COOKIE = dict(httponly=True, secure=True, samesite="lax", path="/")

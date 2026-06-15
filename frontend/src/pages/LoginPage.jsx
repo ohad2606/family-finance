@@ -56,7 +56,7 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.logo}>זוזים</h1>
+        <h1 style={styles.logo}>כספי</h1>
         <p style={styles.tagline}>ניהול פיננסי משפחתי</p>
 
         {/* Google button */}

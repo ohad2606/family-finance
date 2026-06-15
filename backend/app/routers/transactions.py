@@ -115,7 +115,7 @@ async def export_transactions(
             t.account.name if t.account else '',
         ])
 
-    filename = f"zuzim-{from_date or 'all'}-{to_date or 'all'}.csv"
+    filename = f"kaspi-{from_date or 'all'}-{to_date or 'all'}.csv"
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type='text/csv; charset=utf-8',

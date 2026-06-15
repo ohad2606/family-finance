@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "https://myzuzim.net/api/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "https://family-finance.net/api/auth/google/callback"
 
     @property
     def is_production(self) -> bool:

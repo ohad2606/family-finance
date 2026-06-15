@@ -47,7 +47,7 @@ export default function DashboardPage() {
     <div style={styles.page}>
       {/* Header */}
       <header style={styles.header}>
-        <h1 style={styles.logo}>זוזים</h1>
+        <h1 style={styles.logo}>כספי</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={styles.userName}>{user?.display_name}</span>
           <button style={styles.logoutBtn} onClick={signOut}>יציאה</button>
