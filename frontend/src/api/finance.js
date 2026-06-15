@@ -24,6 +24,7 @@ export const getCashflow = (months = 6) => api.get('/dashboard/cashflow', { para
 export const getSpending = (month, kind = 'expense') => api.get('/dashboard/spending', { params: { month, kind } }).then(r => r.data)
 export const getAnnualReport = (year) => api.get('/dashboard/annual', { params: { year } }).then(r => r.data)
 export const getNetWorthHistory = (months = 12) => api.get('/dashboard/networth-history', { params: { months } }).then(r => r.data)
+export const getFinancialHealth = () => api.get('/dashboard/health').then(r => r.data)
 
 export const getUpcomingRecurring = (days = 7) => api.get('/recurring/upcoming', { params: { days } }).then(r => r.data)
 

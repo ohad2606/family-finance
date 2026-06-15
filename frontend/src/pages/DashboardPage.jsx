@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
+import HealthCard from '../components/HealthCard'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr) })
   const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
   const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12) })
+  const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -74,6 +76,9 @@ export default function DashboardPage() {
             )
           })()}
         </div>
+
+        {/* Financial Health */}
+        <HealthCard health={health} />
 
         {/* Month summary */}
         <div style={styles.row}>

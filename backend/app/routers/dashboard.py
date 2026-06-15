@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_household
-from app.models.finance import Account, Category, Transaction
-from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport, NetWorthPoint
+from app.models.finance import Account, Category, Transaction, Budget, Loan
+from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport, NetWorthPoint, FinancialHealth, HealthMetric
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -277,6 +277,134 @@ async def networth_history(
         ))
         cur = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
     return out
+
+
+def _status(value, thresholds, labels=("excellent","good","fair","poor")):
+    for t, lbl in zip(thresholds, labels):
+        if value >= t:
+            return lbl
+    return labels[-1]
+
+
+@router.get("/health", response_model=FinancialHealth)
+async def financial_health(ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+    _, household = ctx
+    hid = household.id
+    today = date.today()
+    month_start = today.replace(day=1)
+
+    # ── 1. Current month income / expense ──
+    month_row = (await db.execute(
+        select(
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
+        ).where(Transaction.household_id == hid,
+                Transaction.transaction_date >= month_start,
+                Transaction.transaction_date <= today)
+    )).first()
+    month_income = float(month_row.inc or 0)
+    month_expense = float(month_row.exp or 0)
+
+    # ── 2. 3-month avg expense (for runway) and avg income (for debt burden) ──
+    three_ago = (month_start - timedelta(days=1)).replace(day=1)
+    three_ago = (three_ago - timedelta(days=1)).replace(day=1)
+    three_ago = (three_ago - timedelta(days=1)).replace(day=1)
+    hist_row = (await db.execute(
+        select(
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
+        ).where(Transaction.household_id == hid,
+                Transaction.transaction_date >= three_ago,
+                Transaction.transaction_date < month_start)
+    )).first()
+    avg_income  = float(hist_row.inc or 0) / 3
+    avg_expense = float(hist_row.exp or 0) / 3
+
+    # ── 3. Net worth (opening balances + all transactions) ──
+    accs = (await db.execute(
+        select(Account).where(Account.household_id == hid, Account.is_active == True)
+    )).scalars().all()
+    opening = sum(float(a.opening_balance) for a in accs)
+    tx_row = (await db.execute(
+        select(
+            func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
+            func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
+        ).where(Transaction.household_id == hid)
+    )).first()
+    net_worth = opening + float(tx_row.inc or 0) - float(tx_row.exp or 0)
+
+    # ── 4. Budget adherence this month ──
+    budgets = (await db.execute(
+        select(Budget).where(Budget.household_id == hid, Budget.month == month_start)
+    )).scalars().all()
+    adherence_score = None
+    if budgets:
+        cat_actuals_rows = (await db.execute(
+            select(Transaction.category_id,
+                   func.sum(Transaction.amount).label("actual"))
+            .where(Transaction.household_id == hid,
+                   Transaction.kind == "expense",
+                   Transaction.transaction_date >= month_start,
+                   Transaction.transaction_date <= today,
+                   Transaction.category_id.in_([b.category_id for b in budgets]))
+            .group_by(Transaction.category_id)
+        )).all()
+        actuals = {r.category_id: float(r.actual) for r in cat_actuals_rows}
+        within = sum(1 for b in budgets if actuals.get(b.category_id, 0) <= float(b.amount_planned))
+        adherence_score = within / len(budgets)
+
+    # ── 5. Monthly loan payments ──
+    loans = (await db.execute(
+        select(Loan).where(Loan.household_id == hid, Loan.is_active == True)
+    )).scalars().all()
+    total_loan_payment = 0.0
+    for loan in loans:
+        if loan.monthly_payment:
+            total_loan_payment += float(loan.monthly_payment)
+        else:
+            r = float(loan.interest_rate) / 100 / 12
+            n = int(loan.term_months)
+            p = float(loan.principal)
+            if r > 0:
+                total_loan_payment += p * r * (1+r)**n / ((1+r)**n - 1)
+            elif n > 0:
+                total_loan_payment += p / n
+
+    # ── Build metrics ──
+    # Savings rate
+    sr = (month_income - month_expense) / month_income if month_income > 0 else 0
+    sr_status = _status(sr, [0.20, 0.10, 0.01], ["excellent","good","fair"]) if month_income > 0 else "n/a"
+
+    # Budget adherence
+    ba = adherence_score if adherence_score is not None else -1
+    ba_status = _status(ba, [1.0, 0.75, 0.50], ["excellent","good","fair"]) if ba >= 0 else "n/a"
+
+    # Runway months
+    ref_expense = avg_expense if avg_expense > 0 else month_expense
+    runway = (net_worth / ref_expense) if ref_expense > 0 else 0
+    runway_status = _status(runway, [6, 3, 1], ["excellent","good","fair"]) if ref_expense > 0 else "n/a"
+
+    # Debt burden
+    ref_income = avg_income if avg_income > 0 else month_income
+    debt_ratio = total_loan_payment / ref_income if ref_income > 0 and total_loan_payment > 0 else 0
+    debt_status = _status(1 - debt_ratio, [0.80, 0.65, 0.50], ["excellent","good","fair"]) if ref_income > 0 else "n/a"
+
+    # Weighted score (only include metrics with data)
+    pts, weight = 0.0, 0.0
+    grade = {"excellent":100,"good":70,"fair":40,"poor":10}
+    for val, w in [(sr_status,35),(ba_status,25),(runway_status,25),(debt_status,15)]:
+        if val != "n/a":
+            pts += grade.get(val, 10) * w
+            weight += w
+    score = round(pts / weight) if weight > 0 else 0
+
+    return FinancialHealth(
+        score=score,
+        savings_rate=HealthMetric(value=round(sr*100,1), status=sr_status, label="שיעור חיסכון חודשי"),
+        budget_adherence=HealthMetric(value=round((ba if ba>=0 else 0)*100,1), status=ba_status, label="עמידה בתקציב"),
+        runway_months=HealthMetric(value=round(runway,1), status=runway_status, label="חודשי מזומן"),
+        debt_burden=HealthMetric(value=round(debt_ratio*100,1), status=debt_status, label="יחס חוב להכנסה"),
+    )
 
 
 @router.get("/spending", response_model=list[CategorySpend])

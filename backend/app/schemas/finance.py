@@ -275,3 +275,17 @@ class NetWorthPoint(BaseModel):
     net_worth: float
     income: float
     expense: float
+
+
+class HealthMetric(BaseModel):
+    value: float
+    status: str   # "excellent" | "good" | "fair" | "poor" | "n/a"
+    label: str
+
+
+class FinancialHealth(BaseModel):
+    score: int               # 0-100
+    savings_rate: HealthMetric
+    budget_adherence: HealthMetric
+    runway_months: HealthMetric
+    debt_burden: HealthMetric
