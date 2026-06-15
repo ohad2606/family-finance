@@ -35,6 +35,13 @@ export const deleteSavings = (id) => api.delete(`/savings/${id}`)
 
 export const bulkImportTransactions = (rows) => api.post('/transactions/bulk', { rows }).then(r => r.data)
 
+export const getHousehold = () => api.get('/household').then(r => r.data)
+export const createInvite = () => api.post('/household/invite').then(r => r.data)
+export const getInviteInfo = (token) => api.get(`/household/invite/${token}`).then(r => r.data)
+export const joinHousehold = (token) => api.post(`/household/join/${token}`).then(r => r.data)
+export const removeMember = (memberId) => api.delete(`/household/members/${memberId}`)
+export const updateHouseholdName = (name) => api.patch('/household/name', { name }).then(r => r.data)
+
 export const getLoans = () => api.get('/loans').then(r => r.data)
 export const createLoan = (data) => api.post('/loans', data).then(r => r.data)
 export const updateLoan = (id, data) => api.patch(`/loans/${id}`, data).then(r => r.data)

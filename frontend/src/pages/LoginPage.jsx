@@ -44,7 +44,8 @@ export default function LoginPage() {
         await register(form)
       }
       await queryClient.invalidateQueries({ queryKey: ['me'] })
-      navigate('/')
+      const next = searchParams.get('next')
+      navigate(next && next.startsWith('/') ? next : '/')
     } catch (err) {
       setError(err.response?.data?.detail || 'שגיאה, נסה שוב')
     } finally {
