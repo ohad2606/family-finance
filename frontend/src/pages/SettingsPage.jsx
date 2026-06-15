@@ -139,9 +139,12 @@ function AccountSheet({ acc, onClose }) {
         )}
 
         <label style={s.label}>בנק / מוסד</label>
-        <input style={s.input} value={form.institution}
+        <input style={s.input} list="il-banks" value={form.institution}
           onChange={e => setForm(f => ({ ...f, institution: e.target.value }))}
           placeholder="לדוגמה: בנק לאומי" />
+        <datalist id="il-banks">
+          {['בנק לאומי','בנק הפועלים','בנק דיסקונט','בנק מזרחי טפחות','בנק הבינלאומי','בנק ירושלים','בנק אוצר החייל','בנק מרכנתיל דיסקונט','בנק יהב','בנק פועלי אגודת ישראל','ONE ZERO','בנק הדואר','קופת חולים','אשראי ישיר','כרטיסי אשראי לישראל (כ.א.ל)','ישראכארט','מקס (לאומי קארד)','ויזה כ.א.ל','אמריקן אקספרס'].map(b => <option key={b} value={b} />)}
+        </datalist>
 
         {!isEdit && (
           <>
