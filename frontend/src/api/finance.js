@@ -33,6 +33,8 @@ export const createSavings = (data) => api.post('/savings', data).then(r => r.da
 export const updateSavings = (id, data) => api.patch(`/savings/${id}`, data).then(r => r.data)
 export const deleteSavings = (id) => api.delete(`/savings/${id}`)
 
+export const bulkImportTransactions = (rows) => api.post('/transactions/bulk', { rows }).then(r => r.data)
+
 export const getLoans = () => api.get('/loans').then(r => r.data)
 export const createLoan = (data) => api.post('/loans', data).then(r => r.data)
 export const updateLoan = (id, data) => api.patch(`/loans/${id}`, data).then(r => r.data)

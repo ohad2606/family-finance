@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -118,3 +119,57 @@ async def delete_transaction(tx_id: int, ctx=Depends(get_current_household), db:
     db.add(AuditLog(household_id=household.id, user_id=user.id, action="delete", entity_type="transaction", entity_id=tx_id))
     await db.delete(t)
     await db.commit()
+
+
+class BulkImportRow(BaseModel):
+    account_id: int
+    category_id: Optional[int] = None
+    amount: float
+    kind: str
+    description: Optional[str] = None
+    transaction_date: date
+
+
+class BulkImportBody(BaseModel):
+    rows: list[BulkImportRow]
+
+
+@router.post("/bulk", dependencies=[Depends(verify_csrf)])
+async def bulk_import_transactions(
+    body: BulkImportBody,
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    user, household = ctx
+
+    if not body.rows:
+        return {"imported": 0}
+    if len(body.rows) > 2000:
+        raise HTTPException(400, "מקסימום 2000 שורות ביבוא אחד")
+
+    account_ids = {r.account_id for r in body.rows}
+    acc_result = await db.execute(
+        select(Account.id).where(Account.id.in_(account_ids), Account.household_id == household.id)
+    )
+    valid_accounts = {row[0] for row in acc_result.all()}
+    invalid = account_ids - valid_accounts
+    if invalid:
+        raise HTTPException(400, f"חשבון לא נמצא: {invalid}")
+
+    for row in body.rows:
+        db.add(Transaction(
+            household_id=household.id,
+            created_by=user.id,
+            source="import",
+            **row.model_dump(),
+        ))
+
+    db.add(AuditLog(
+        household_id=household.id,
+        user_id=user.id,
+        action="bulk_import",
+        entity_type="transaction",
+        detail=str(len(body.rows)),
+    ))
+    await db.commit()
+    return {"imported": len(body.rows)}
