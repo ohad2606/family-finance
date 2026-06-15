@@ -26,6 +26,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         // Never let the service worker intercept /api/ — OAuth redirects and
         // cookie-based auth break when the SW follows server-side redirects.
