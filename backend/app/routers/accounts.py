@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,7 +15,7 @@ async def _account_balance(db: AsyncSession, account: Account) -> float:
         select(
             func.coalesce(
                 func.sum(
-                    func.case(
+                    case(
                         (Transaction.kind == "income", Transaction.amount),
                         else_=-Transaction.amount,
                     )

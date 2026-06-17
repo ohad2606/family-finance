@@ -53,3 +53,5 @@ export const createLoan = (data) => api.post('/loans', data).then(r => r.data)
 export const updateLoan = (id, data) => api.patch(`/loans/${id}`, data).then(r => r.data)
 export const deleteLoan = (id) => api.delete(`/loans/${id}`)
 export const getLoanSchedule = (id) => api.get(`/loans/${id}/schedule`).then(r => r.data)
+
+export const getBankSyncStatus = () => api.get('/bank-sync/status').then(r => r.data)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
   const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
   const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans })
+  const { data: bankSyncStatus = [] } = useQuery({ queryKey: ['bank-sync-status'], queryFn: getBankSyncStatus, staleTime: 60_000 })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -228,6 +229,38 @@ export default function DashboardPage() {
           )
         })()}
 
+        {/* Bank sync status */}
+        {bankSyncStatus.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={{ ...styles.sectionTitle, marginBottom: '0.6rem' }}>עדכון בנקאי</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {bankSyncStatus.map(s => {
+                const SOURCE_LABELS = { isracard: 'ישראכרט', max: 'מקס', discount: 'דיסקונט' }
+                const syncedAt = s.synced_at ? new Date(s.synced_at) : null
+                const relTime = syncedAt ? (() => {
+                  const diffMin = Math.round((Date.now() - syncedAt) / 60000)
+                  if (diffMin < 60) return `לפני ${diffMin} דקות`
+                  const diffH = Math.floor(diffMin / 60)
+                  if (diffH < 24) return `לפני ${diffH} שעות`
+                  return `לפני ${Math.floor(diffH / 24)} ימים`
+                })() : null
+                return (
+                  <div key={s.source} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: `1px solid ${C.line}` }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.status === 'ok' ? C.income : C.expense, flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, fontSize: '0.88rem', color: C.ink }}>{SOURCE_LABELS[s.source] || s.source}</span>
+                    <span style={{ flex: 1, fontSize: '0.78rem', color: C.muted, textAlign: 'left' }}>
+                      {s.status === 'ok'
+                        ? `${s.txns_created} חדשות · ${s.txns_skipped} ידועות`
+                        : s.error_message || 'שגיאה'}
+                    </span>
+                    {relTime && <span style={{ fontSize: '0.75rem', color: C.muted, whiteSpace: 'nowrap' }}>{relTime}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Accounts */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
@@ -237,7 +270,6 @@ export default function DashboardPage() {
           {accounts.length === 0 ? (
             <div style={styles.emptyCard}>
               <p style={styles.emptyText}>אין חשבונות עדיין</p>
-              <button style={styles.emptyAction} onClick={() => setShowAcc(true)}>הוסף חשבון ראשון</button>
             </div>
           ) : (
             <div style={styles.accountsList}>
@@ -268,7 +300,6 @@ export default function DashboardPage() {
           {transactions.length === 0 ? (
             <div style={styles.emptyCard}>
               <p style={styles.emptyText}>אין תנועות עדיין</p>
-              <button style={styles.emptyAction} onClick={() => setShowTx(true)}>הוסף תנועה ראשונה</button>
             </div>
           ) : (
             <div style={styles.txList}>

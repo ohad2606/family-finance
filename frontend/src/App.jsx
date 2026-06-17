@@ -1,8 +1,27 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { useEffect, useRef, useState } from 'react'
+import { Component, useEffect, useRef, useState } from 'react'
 import TakzivLogo from './components/TakzivLogo'
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div style={{ minHeight: '100vh', background: '#E9EBE4', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Assistant, sans-serif', direction: 'rtl', padding: '2rem', gap: 16 }}>
+        <p style={{ fontWeight: 700, color: '#1B2A27', fontSize: '1.1rem', margin: 0 }}>אירעה שגיאה בטעינת הדף</p>
+        <pre style={{ background: '#F7F8F4', padding: '1rem', borderRadius: 12, fontSize: '0.75rem', color: '#B0573C', maxWidth: 400, overflow: 'auto', textAlign: 'left', direction: 'ltr' }}>
+          {this.state.error?.message}
+        </pre>
+        <button onClick={() => window.location.reload()} style={{ padding: '0.6rem 1.5rem', background: '#C9A23F', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontWeight: 700 }}>
+          טען מחדש
+        </button>
+      </div>
+    )
+  }
+}
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
@@ -170,6 +189,7 @@ function AppShell() {
   const { user } = useAuth()
   return (
     <>
+      <ErrorBoundary>
       <Routes>
         <Route path="/welcome" element={<RequireGuest><LandingPage /></RequireGuest>} />
         <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
@@ -188,7 +208,9 @@ function AppShell() {
         <Route path="/forgot-password" element={<RequireGuest><ForgotPasswordPage /></RequireGuest>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<RequireAuth><ProfilePage onBack={() => navigate('/more')} /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
       {user && pathname !== '/login' && <BottomNav />}
       <InstallBanner />
     </>

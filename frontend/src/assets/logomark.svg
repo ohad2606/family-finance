@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1B2A27"></rect>
+  <polygon points="32,14 50,32 14,32" fill="#C9A23F"></polygon>
+  <rect x="18" y="31" width="28" height="17" rx="1" fill="#C9A23F" fill-opacity="0.18" stroke="#C9A23F" stroke-width="2"></rect>
+  <text x="32" y="43" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#C9A23F">₪</text>
+</svg>

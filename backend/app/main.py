@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.core.config import settings
-from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household
+from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync
 from app.scheduler import start_scheduler, scheduler
 
 
@@ -48,6 +48,7 @@ app.include_router(recurring.router, prefix="/api")
 app.include_router(loans.router, prefix="/api")
 app.include_router(savings.router, prefix="/api")
 app.include_router(household.router, prefix="/api")
+app.include_router(bank_sync.router, prefix="/api")
 
 
 @app.get("/api/health")

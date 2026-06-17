@@ -1,111 +1,191 @@
+/* ============================================================
+   Takziv — design tokens + base reset
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Heebo:wght@400;500;700;800;900&display=swap');
+
+/* ---- Color tokens ---- */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --paper:   #E9EBE4;
+  --card:    #F7F8F4;
+  --ink:     #1B2A27;
+  --muted:   #6B746E;
+  --line:    #D5D8CF;
+  --income:  #2F6B4F;
+  --expense: #B0573C;
+  --brass:   #C9A23F;
+  --white:   #ffffff;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --bg-app:        var(--paper);
+  --surface-card:  var(--card);
+  --surface-dark:  var(--ink);
+  --surface-input: var(--paper);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --text-strong: var(--ink);
+  --text-body:   var(--ink);
+  --text-muted:  var(--muted);
+  --text-on-dark: var(--white);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --border:        var(--line);
+  --border-strong: var(--ink);
+
+  --accent:        var(--brass);
+  --accent-text:   var(--white);
+  --accent-shadow: rgba(201, 162, 63, 0.35);
+
+  --positive: var(--income);
+  --negative: var(--expense);
+
+  --on-dark-fill:  rgba(255, 255, 255, 0.07);
+  --on-dark-track: rgba(255, 255, 255, 0.15);
+  --on-dark-text:  rgba(255, 255, 255, 1);
+  --on-dark-sub:   rgba(255, 255, 255, 0.60);
+  --on-dark-faint: rgba(255, 255, 255, 0.35);
+  --on-dark-pos:   #6EE7B7;
+  --on-dark-neg:   #FCA5A5;
+
+  --status-excellent-fg: #2F6B4F; --status-excellent-bg: #D1FAE5;
+  --status-good-fg:      #1B879E; --status-good-bg:      #CFFAFE;
+  --status-fair-fg:      #B45309; --status-fair-bg:      #FEF3C7;
+  --status-poor-fg:      #B0573C; --status-poor-bg:      #FEE2E2;
+  --status-na-fg:        #6B746E; --status-na-bg:        #F3F4F6;
+
+  --alert-bg:     #FEF3C7;
+  --alert-border: #FCD34D;
+  --alert-text:   #92400E;
+
+  --cat-1:  #2F6B4F;
+  --cat-2:  #C9A23F;
+  --cat-3:  #4A7FA5;
+  --cat-4:  #8B5CF6;
+  --cat-5:  #E07B30;
+  --cat-6:  #B0573C;
+  --cat-7:  #1B879E;
+  --cat-8:  #6B746E;
+  --cat-9:  #9B4F8B;
+  --cat-10: #3D7A5E;
+
+  --scrim: rgba(27, 42, 39, 0.40);
+
+  /* ---- Typography tokens ---- */
+  --font-sans:    'Assistant', system-ui, 'Segoe UI', sans-serif;
+  --font-display: 'Heebo', 'Assistant', system-ui, sans-serif;
+
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    900;
+
+  --fs-hero:    3rem;
+  --fs-display: 2.2rem;
+  --fs-h1:      1.4rem;
+  --fs-h2:      1.3rem;
+  --fs-h3:      1rem;
+  --fs-body:    1rem;
+  --fs-sm:      0.9rem;
+  --fs-meta:    0.78rem;
+  --fs-caption: 0.72rem;
+  --fs-micro:   0.6rem;
+
+  --lh-tight: 1.2;
+  --lh-snug:  1.4;
+  --lh-body:  1.6;
+
+  --ls-eyebrow: 1px;
+  --ls-tight:   -0.5px;
+
+  --numeric: tabular-nums;
+
+  /* ---- Spacing / radii / shadows ---- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --gutter-tight: 0.75rem;
+  --gutter:       1rem;
+  --pad-screen:   1.25rem;
+
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-2xl:  22px;
+  --radius-pill: 999px;
+
+  --border-hair:   1px;
+  --border-accent: 3px;
+
+  --shadow-card:  0 2px 16px rgba(27, 42, 39, 0.08);
+  --shadow-float: 0 20px 40px rgba(27, 42, 39, 0.18);
+  --shadow-cta:   0 4px 16px rgba(201, 162, 63, 0.35);
+
+  --w-app:     560px;
+  --w-content: 1000px;
+  --w-card:    380px;
+
+  --ease:     ease;
+  --dur-fast: 0.3s;
+  --dur-bar:  0.4s;
+
+  --dir: rtl;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* ---- Base reset ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  background: var(--bg-app);
+  direction: rtl;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  color: var(--text-strong);
+  line-height: var(--lh-tight);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+button {
+  font-family: var(--font-sans);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+input, select, textarea {
+  font-family: var(--font-sans);
+}
+
+/* Bottom-sheet slide-up animation */
+@keyframes tz-rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes tz-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

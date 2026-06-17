@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "https://family-finance.net/api/auth/google/callback"
     RESEND_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@family-finance.net"
+    BANK_SYNC_API_KEY: str = ""
 
     @property
     def is_production(self) -> bool:
