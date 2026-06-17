@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
@@ -39,7 +39,15 @@ export default function DashboardPage() {
   const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
   const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
   const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans })
-  const { data: bankSyncStatus = [] } = useQuery({ queryKey: ['bank-sync-status'], queryFn: getBankSyncStatus, staleTime: 60_000 })
+  const { data: bankSyncData = { syncs: [], has_pending: false } } = useQuery({
+    queryKey: ['bank-sync-status'],
+    queryFn: getBankSyncStatus,
+    staleTime: 30_000,
+    refetchInterval: (query) => query.state.data?.has_pending ? 10_000 : false,
+  })
+  const bankSyncStatus = bankSyncData.syncs
+  const bankSyncPending = bankSyncData.has_pending
+  const [triggering, setTriggering] = useState(false)
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -230,9 +238,26 @@ export default function DashboardPage() {
         })()}
 
         {/* Bank sync status */}
-        {bankSyncStatus.length > 0 && (
+        {(bankSyncStatus.length > 0 || bankSyncPending) && (
           <section style={styles.section}>
-            <h2 style={{ ...styles.sectionTitle, marginBottom: '0.6rem' }}>עדכון בנקאי</h2>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>עדכון בנקאי</h2>
+              <button
+                style={{ ...styles.addBtn, opacity: triggering || bankSyncPending ? 0.5 : 1 }}
+                disabled={triggering || bankSyncPending}
+                onClick={async () => {
+                  setTriggering(true)
+                  try { await triggerBankSync() } finally { setTriggering(false) }
+                }}
+              >
+                {bankSyncPending ? '⟳ מסנכרן...' : triggering ? 'שולח...' : '↻ סנכרן עכשיו'}
+              </button>
+            </div>
+            {bankSyncPending && (
+              <div style={{ fontSize: '0.8rem', color: C.brass, marginBottom: 8 }}>
+                ⟳ הסקרייפר הביתי יאסוף את הנתונים בדקה הקרובה...
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {bankSyncStatus.map(s => {
                 const SOURCE_LABELS = { isracard: 'ישראכרט', max: 'מקס', discount: 'דיסקונט' }

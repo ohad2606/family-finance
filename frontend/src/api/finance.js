@@ -55,3 +55,4 @@ export const deleteLoan = (id) => api.delete(`/loans/${id}`)
 export const getLoanSchedule = (id) => api.get(`/loans/${id}/schedule`).then(r => r.data)
 
 export const getBankSyncStatus = () => api.get('/bank-sync/status').then(r => r.data)
+export const triggerBankSync = () => api.post('/bank-sync/trigger').then(r => r.data)

@@ -24,6 +24,20 @@ class BankSyncLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class BankSyncCommand(Base):
+    __tablename__ = "bank_sync_commands"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False, index=True)
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True)  # None = all configured sources
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # pending|running|done|error
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class Account(Base):
     __tablename__ = "accounts"
 

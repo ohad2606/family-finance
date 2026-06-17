@@ -1,6 +1,5 @@
 import hashlib
-from datetime import date, datetime
-from typing import Any
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
@@ -10,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.database import get_db
 from app.deps import get_current_household
-from app.models.finance import Account, BankSyncLog, Transaction
+from app.models.finance import Account, BankSyncCommand, BankSyncLog, Transaction
 
 router = APIRouter(prefix="/bank-sync", tags=["bank-sync"])
 
@@ -21,6 +20,8 @@ def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
     if not settings.BANK_SYNC_API_KEY or x_api_key != settings.BANK_SYNC_API_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
+
+# ── Pydantic models ────────────────────────────────────────────────────────────
 
 class TxnIn(BaseModel):
     date: str
@@ -44,6 +45,13 @@ class BankSyncPayload(BaseModel):
     accounts: list[AccountIn]
     scraped_at: str | None = None
 
+
+class CommandUpdate(BaseModel):
+    status: str  # "done" | "error"
+    result: str | None = None
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _external_ref(source: str, account_number: str, txn: TxnIn) -> str:
     if txn.identifier:
@@ -69,6 +77,8 @@ def _parse_scraped_at(raw: str | None) -> datetime | None:
     except Exception:
         return None
 
+
+# ── Push endpoint (called by home server) ─────────────────────────────────────
 
 @router.post("")
 async def bank_sync(
@@ -108,7 +118,6 @@ async def bank_sync(
 
         for txn_in in acc_in.txns:
             ext_ref = _external_ref(payload.source, acc_in.account_number, txn_in)
-
             exists = await db.execute(
                 select(Transaction.id).where(Transaction.external_ref == ext_ref)
             )
@@ -116,14 +125,11 @@ async def bank_sync(
                 stats["txns_skipped"] += 1
                 continue
 
-            amount = abs(txn_in.charged_amount)
-            kind = "expense" if txn_in.charged_amount < 0 else "income"
-
             txn = Transaction(
                 household_id=payload.household_id,
                 account_id=account.id,
-                amount=amount,
-                kind=kind,
+                amount=abs(txn_in.charged_amount),
+                kind="expense" if txn_in.charged_amount < 0 else "income",
                 description=txn_in.description or "",
                 transaction_date=_parse_date(txn_in.date),
                 source="bank_sync",
@@ -132,7 +138,7 @@ async def bank_sync(
             db.add(txn)
             stats["txns_created"] += 1
 
-    log = BankSyncLog(
+    db.add(BankSyncLog(
         household_id=payload.household_id,
         source=payload.source,
         status="ok",
@@ -140,12 +146,82 @@ async def bank_sync(
         txns_created=stats["txns_created"],
         txns_skipped=stats["txns_skipped"],
         scraped_at=_parse_scraped_at(payload.scraped_at),
-    )
-    db.add(log)
+    ))
 
     await db.commit()
     return {"ok": True, "source": payload.source, **stats}
 
+
+# ── Command queue endpoints ────────────────────────────────────────────────────
+
+@router.post("/trigger", status_code=201)
+async def trigger_sync(
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """App user requests an on-demand sync."""
+    user, household = ctx
+    cmd = BankSyncCommand(
+        household_id=household.id,
+        created_by=user.id,
+        status="pending",
+    )
+    db.add(cmd)
+    await db.commit()
+    await db.refresh(cmd)
+    return {"id": cmd.id, "status": cmd.status, "created_at": cmd.created_at.isoformat()}
+
+
+@router.get("/commands/pending")
+async def poll_commands(
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key),
+):
+    """Home server polls this endpoint to claim pending commands."""
+    result = await db.execute(
+        select(BankSyncCommand)
+        .where(BankSyncCommand.status == "pending")
+        .with_for_update(skip_locked=True)
+        .limit(5)
+    )
+    commands = result.scalars().all()
+
+    now = datetime.now(timezone.utc)
+    for cmd in commands:
+        cmd.status = "running"
+        cmd.started_at = now
+
+    await db.commit()
+
+    return [
+        {"id": cmd.id, "household_id": cmd.household_id, "source": cmd.source}
+        for cmd in commands
+    ]
+
+
+@router.patch("/commands/{command_id}")
+async def update_command(
+    command_id: int,
+    body: CommandUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key),
+):
+    """Home server marks a command done or errored."""
+    result = await db.execute(
+        select(BankSyncCommand).where(BankSyncCommand.id == command_id)
+    )
+    cmd = result.scalar_one_or_none()
+    if cmd is None:
+        raise HTTPException(status_code=404, detail="Command not found")
+
+    cmd.status = body.status
+    cmd.result = body.result
+    cmd.completed_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Status endpoint (shown in dashboard) ──────────────────────────────────────
 
 @router.get("/status")
 async def bank_sync_status(
@@ -155,7 +231,6 @@ async def bank_sync_status(
     _, household = ctx
     hid = household.id
 
-    # Last log entry per source
     rows = await db.execute(
         select(BankSyncLog)
         .where(BankSyncLog.household_id == hid)
@@ -164,7 +239,6 @@ async def bank_sync_status(
     )
     logs = rows.scalars().all()
 
-    # Keep only the most recent per source
     seen: set[str] = set()
     result = []
     for log in logs:
@@ -181,4 +255,17 @@ async def bank_sync_status(
                 "synced_at": log.created_at.isoformat() if log.created_at else None,
             })
 
-    return result
+    pending = await db.execute(
+        select(BankSyncCommand.id)
+        .where(
+            BankSyncCommand.household_id == hid,
+            BankSyncCommand.status.in_(["pending", "running"]),
+        )
+        .limit(1)
+    )
+    has_pending = pending.scalar_one_or_none() is not None
+
+    for item in result:
+        item["has_pending"] = has_pending
+
+    return {"syncs": result, "has_pending": has_pending}
