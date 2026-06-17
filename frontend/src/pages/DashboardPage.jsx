@@ -91,6 +91,32 @@ export default function DashboardPage() {
           })()}
         </div>
 
+        {/* Checking account bank balance */}
+        {(() => {
+          const checkingAccs = accounts.filter(a => a.type === 'checking' && a.bank_balance != null)
+          if (!checkingAccs.length) return null
+          const fmt2 = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n)
+          return (
+            <div style={{ background: C.card, borderRadius: 18, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: C.muted, fontWeight: 600 }}>יתרת עו״ש מהבנק</p>
+              {checkingAccs.map(a => {
+                const updatedAt = a.bank_balance_at ? new Date(a.bank_balance_at) : null
+                const diffH = updatedAt ? Math.round((Date.now() - updatedAt) / 3_600_000) : null
+                const age = diffH != null ? (diffH < 1 ? 'עכשיו' : diffH < 24 ? `לפני ${diffH}ש׳` : `לפני ${Math.floor(diffH/24)}י׳`) : ''
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.88rem', color: C.ink, fontWeight: 600 }}>{a.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.4rem', color: a.bank_balance >= 0 ? C.ink : C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmt2(a.bank_balance)}</span>
+                      {age && <span style={{ fontSize: '0.7rem', color: C.muted }}>{age}</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {/* Financial Health */}
         <HealthCard health={health} />
 

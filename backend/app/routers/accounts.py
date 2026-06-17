@@ -42,6 +42,8 @@ async def list_accounts(ctx=Depends(get_current_household), db: AsyncSession = D
             id=acc.id, name=acc.name, type=acc.type, institution=acc.institution,
             currency=acc.currency, opening_balance=float(acc.opening_balance),
             is_active=acc.is_active, balance=bal,
+            bank_balance=float(acc.bank_balance) if acc.bank_balance is not None else None,
+            bank_balance_at=acc.bank_balance_at.isoformat() if acc.bank_balance_at else None,
         ))
     return out
 

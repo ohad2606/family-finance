@@ -52,6 +52,8 @@ class Account(Base):
     currency: Mapped[str] = mapped_column(String(3), default="ILS", nullable=False)
     opening_balance: Mapped[float] = mapped_column(Numeric(14, 2), default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    bank_balance: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    bank_balance_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="account")

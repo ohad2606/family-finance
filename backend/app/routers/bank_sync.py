@@ -114,6 +114,10 @@ async def bank_sync(
             db.add(account)
             await db.flush()
 
+        if acc_in.balance is not None:
+            account.bank_balance = acc_in.balance
+            account.bank_balance_at = datetime.now(timezone.utc)
+
         stats["accounts_found"] += 1
 
         for txn_in in acc_in.txns:

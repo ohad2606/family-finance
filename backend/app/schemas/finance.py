@@ -29,6 +29,8 @@ class AccountOut(BaseModel):
     opening_balance: float
     is_active: bool
     balance: float = 0
+    bank_balance: Optional[float] = None
+    bank_balance_at: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
