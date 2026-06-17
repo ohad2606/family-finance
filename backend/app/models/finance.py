@@ -54,6 +54,10 @@ class Account(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     bank_balance: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     bank_balance_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    nickname: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    credit_limit: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    show_on_dashboard: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    include_in_totals: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="account")

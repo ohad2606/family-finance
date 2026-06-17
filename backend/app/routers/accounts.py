@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +10,17 @@ from app.models.finance import Account, Transaction
 from app.schemas.finance import AccountCreate, AccountOut, AccountUpdate
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
+
+
+async def _current_month_credit_used(db: AsyncSession, account: Account) -> float | None:
+    if account.type != 'credit':
+        return None
+    month_start = date.today().replace(day=1)
+    result = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+        .where(Transaction.account_id == account.id, Transaction.kind == 'expense', Transaction.transaction_date >= month_start)
+    )
+    return float(result.scalar())
 
 
 async def _account_balance(db: AsyncSession, account: Account) -> float:
@@ -38,12 +51,18 @@ async def list_accounts(ctx=Depends(get_current_household), db: AsyncSession = D
     out = []
     for acc in accounts:
         bal = await _account_balance(db, acc)
+        credit_used = await _current_month_credit_used(db, acc)
         out.append(AccountOut(
             id=acc.id, name=acc.name, type=acc.type, institution=acc.institution,
             currency=acc.currency, opening_balance=float(acc.opening_balance),
             is_active=acc.is_active, balance=bal,
             bank_balance=float(acc.bank_balance) if acc.bank_balance is not None else None,
             bank_balance_at=acc.bank_balance_at.isoformat() if acc.bank_balance_at else None,
+            nickname=acc.nickname,
+            credit_limit=float(acc.credit_limit) if acc.credit_limit is not None else None,
+            show_on_dashboard=acc.show_on_dashboard,
+            include_in_totals=acc.include_in_totals,
+            credit_used=credit_used,
         ))
     return out
 
@@ -70,7 +89,19 @@ async def update_account(account_id: int, body: AccountUpdate, ctx=Depends(get_c
     await db.commit()
     await db.refresh(acc)
     bal = await _account_balance(db, acc)
-    return AccountOut(**acc.__dict__, balance=bal)
+    credit_used = await _current_month_credit_used(db, acc)
+    return AccountOut(
+        id=acc.id, name=acc.name, type=acc.type, institution=acc.institution,
+        currency=acc.currency, opening_balance=float(acc.opening_balance),
+        is_active=acc.is_active, balance=bal,
+        bank_balance=float(acc.bank_balance) if acc.bank_balance is not None else None,
+        bank_balance_at=acc.bank_balance_at.isoformat() if acc.bank_balance_at else None,
+        nickname=acc.nickname,
+        credit_limit=float(acc.credit_limit) if acc.credit_limit is not None else None,
+        show_on_dashboard=acc.show_on_dashboard,
+        include_in_totals=acc.include_in_totals,
+        credit_used=credit_used,
+    )
 
 
 @router.delete("/{account_id}", status_code=204, dependencies=[Depends(verify_csrf)])

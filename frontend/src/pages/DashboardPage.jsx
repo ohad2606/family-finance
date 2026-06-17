@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
-import AddAccountSheet from '../components/AddAccountSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
@@ -18,13 +17,11 @@ const C = {
 
 const fmt = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n ?? 0)
 
-const ACCOUNT_LABELS = { checking: 'עו"ש', savings: 'חיסכון', cash: 'מזומן', credit: 'אשראי', investment: 'השקעות' }
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [showTx, setShowTx] = useState(false)
-  const [showAcc, setShowAcc] = useState(false)
 
   const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
 
@@ -65,6 +62,70 @@ export default function DashboardPage() {
       </header>
 
       <main style={styles.main}>
+        {/* Quick financial snapshot - checking accounts + credit cards */}
+        {(() => {
+          const fmtBank = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+          const fmtBankDec = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n)
+          const relAge = at => {
+            if (!at) return ''
+            const diffH = Math.round((Date.now() - new Date(at)) / 3_600_000)
+            return diffH < 1 ? 'עכשיו' : diffH < 24 ? `לפני ${diffH}ש׳` : `לפני ${Math.floor(diffH/24)}י׳`
+          }
+          const dashAccs = accounts.filter(a => a.show_on_dashboard)
+          const checkingAccs = dashAccs.filter(a => a.type === 'checking' && a.bank_balance != null)
+          const creditAccs = dashAccs.filter(a => a.type === 'credit' && a.credit_limit != null)
+          if (!checkingAccs.length && !creditAccs.length) return null
+          return (
+            <div style={{ background: C.card, borderRadius: 18, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.78rem', color: C.muted, fontWeight: 600, letterSpacing: '0.02em' }}>מצב חשבונות</p>
+
+              {checkingAccs.map((a, i) => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: i < checkingAccs.length - 1 ? 8 : 0 }}>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: C.muted }}>עו"ש · </span>
+                    <span style={{ fontSize: '0.9rem', color: C.ink, fontWeight: 600 }}>{a.nickname || a.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.5rem', color: a.bank_balance >= 0 ? C.ink : C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmtBankDec(a.bank_balance)}</span>
+                    {relAge(a.bank_balance_at) && <span style={{ fontSize: '0.7rem', color: C.muted }}>{relAge(a.bank_balance_at)}</span>}
+                  </div>
+                </div>
+              ))}
+
+              {checkingAccs.length > 0 && creditAccs.length > 0 && (
+                <div style={{ height: 1, background: C.line, margin: '10px 0' }} />
+              )}
+
+              {creditAccs.map(a => {
+                const used = a.credit_used ?? 0
+                const remaining = a.credit_limit - used
+                const usedPct = Math.min(100, (used / a.credit_limit) * 100)
+                const danger = usedPct > 80
+                return (
+                  <div key={a.id} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div>
+                        <span style={{ fontSize: '0.78rem', color: C.muted }}>כרטיס · </span>
+                        <span style={{ fontSize: '0.9rem', color: C.ink, fontWeight: 600 }}>{a.nickname || a.name}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.3rem', color: remaining >= 0 ? C.income : C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmtBank(remaining)}</span>
+                      </div>
+                    </div>
+                    <div style={{ background: C.line, borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                      <div style={{ background: danger ? C.expense : C.brass, height: 6, width: `${usedPct}%`, transition: 'width 0.4s ease', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                      <span style={{ fontSize: '0.7rem', color: C.muted }}>שומש {fmtBank(used)} מתוך {fmtBank(a.credit_limit)} החודש</span>
+                      <span style={{ fontSize: '0.7rem', color: danger ? C.expense : C.muted }}>{Math.round(usedPct)}%</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {/* Net Worth */}
         <div style={styles.netWorthCard}>
           <p style={styles.netWorthLabel}>שווי נקי</p>
@@ -90,32 +151,6 @@ export default function DashboardPage() {
             )
           })()}
         </div>
-
-        {/* Checking account bank balance */}
-        {(() => {
-          const checkingAccs = accounts.filter(a => a.type === 'checking' && a.bank_balance != null)
-          if (!checkingAccs.length) return null
-          const fmt2 = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n)
-          return (
-            <div style={{ background: C.card, borderRadius: 18, padding: '1rem 1.25rem' }}>
-              <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: C.muted, fontWeight: 600 }}>יתרת עו״ש מהבנק</p>
-              {checkingAccs.map(a => {
-                const updatedAt = a.bank_balance_at ? new Date(a.bank_balance_at) : null
-                const diffH = updatedAt ? Math.round((Date.now() - updatedAt) / 3_600_000) : null
-                const age = diffH != null ? (diffH < 1 ? 'עכשיו' : diffH < 24 ? `לפני ${diffH}ש׳` : `לפני ${Math.floor(diffH/24)}י׳`) : ''
-                return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.88rem', color: C.ink, fontWeight: 600 }}>{a.name}</span>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.4rem', color: a.bank_balance >= 0 ? C.ink : C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmt2(a.bank_balance)}</span>
-                      {age && <span style={{ fontSize: '0.7rem', color: C.muted }}>{age}</span>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })()}
 
         {/* Financial Health */}
         <HealthCard health={health} />
@@ -312,33 +347,6 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Accounts */}
-        <section style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>חשבונות</h2>
-            <button style={styles.addBtn} onClick={() => setShowAcc(true)}>+ הוסף</button>
-          </div>
-          {accounts.length === 0 ? (
-            <div style={styles.emptyCard}>
-              <p style={styles.emptyText}>אין חשבונות עדיין</p>
-            </div>
-          ) : (
-            <div style={styles.accountsList}>
-              {accounts.map(acc => (
-                <div key={acc.id} style={styles.accountRow}>
-                  <div>
-                    <p style={styles.accountName}>{acc.name}</p>
-                    <p style={styles.accountType}>{ACCOUNT_LABELS[acc.type] || acc.type}{acc.institution ? ` · ${acc.institution}` : ''}</p>
-                  </div>
-                  <p style={{ ...styles.accountBalance, color: acc.balance >= 0 ? C.ink : C.expense }}>
-                    {fmt(acc.balance)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
         {/* Recent Transactions */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
@@ -374,7 +382,6 @@ export default function DashboardPage() {
       <button style={styles.fab} onClick={() => setShowTx(true)}>+</button>
 
       {showTx && <AddTransactionSheet onClose={() => setShowTx(false)} />}
-      {showAcc && <AddAccountSheet onClose={() => setShowAcc(false)} />}
     </div>
   )
 }

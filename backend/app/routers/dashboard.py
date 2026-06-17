@@ -18,8 +18,12 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
     today = date.today()
     month_start = today.replace(day=1)
 
-    # יתרות כל החשבונות
-    acc_result = await db.execute(select(Account).where(Account.household_id == hid, Account.is_active == True))
+    included_ids = select(Account.id).where(Account.household_id == hid, Account.include_in_totals == True)
+
+    # יתרות חשבונות הנכללים בחישוב
+    acc_result = await db.execute(
+        select(Account).where(Account.household_id == hid, Account.is_active == True, Account.include_in_totals == True)
+    )
     accounts = acc_result.scalars().all()
 
     tx_result = await db.execute(
@@ -28,7 +32,7 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         )
-        .where(Transaction.household_id == hid)
+        .where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids))
         .group_by(Transaction.account_id)
     )
     tx_by_account = {row.account_id: (float(row.inc), float(row.exp)) for row in tx_result}
@@ -54,6 +58,7 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
         )
         .where(
             Transaction.household_id == hid,
+            Transaction.account_id.in_(included_ids),
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date <= today,
         )
@@ -85,6 +90,8 @@ async def cashflow(
     for _ in range(months - 1):
         start = (start - timedelta(days=1)).replace(day=1)
 
+    included_ids = select(Account.id).where(Account.household_id == household.id, Account.include_in_totals == True)
+
     result = await db.execute(
         select(
             extract("year", Transaction.transaction_date).label("yr"),
@@ -94,6 +101,7 @@ async def cashflow(
         )
         .where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.transaction_date >= start,
             Transaction.transaction_date <= today,
         )
@@ -133,6 +141,7 @@ async def annual_report(
         year = date.today().year
     year_start = date(year, 1, 1)
     year_end = date(year, 12, 31)
+    included_ids = select(Account.id).where(Account.household_id == household.id, Account.include_in_totals == True)
 
     # Monthly income/expense
     monthly = await db.execute(
@@ -143,6 +152,7 @@ async def annual_report(
         )
         .where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.transaction_date >= year_start,
             Transaction.transaction_date <= year_end,
         )
@@ -172,6 +182,7 @@ async def annual_report(
         )
         .where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.kind == "expense",
             Transaction.transaction_date >= year_start,
             Transaction.transaction_date <= year_end,
@@ -223,9 +234,11 @@ async def networth_history(
     for _ in range(months - 1):
         window_start = (window_start - timedelta(days=1)).replace(day=1)
 
-    # Opening balances across all active accounts
+    included_ids = select(Account.id).where(Account.household_id == household.id, Account.include_in_totals == True)
+
+    # Opening balances across included active accounts
     acc_result = await db.execute(
-        select(Account).where(Account.household_id == household.id, Account.is_active == True)
+        select(Account).where(Account.household_id == household.id, Account.is_active == True, Account.include_in_totals == True)
     )
     accounts = acc_result.scalars().all()
     opening_total = sum(float(a.opening_balance) for a in accounts)
@@ -237,6 +250,7 @@ async def networth_history(
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         ).where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.transaction_date < window_start,
         )
     )
@@ -253,6 +267,7 @@ async def networth_history(
         )
         .where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.transaction_date >= window_start,
             Transaction.transaction_date <= today,
         )
@@ -293,12 +308,15 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
     today = date.today()
     month_start = today.replace(day=1)
 
+    included_ids = select(Account.id).where(Account.household_id == hid, Account.include_in_totals == True)
+
     # ── 1. Current month income / expense ──
     month_row = (await db.execute(
         select(
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         ).where(Transaction.household_id == hid,
+                Transaction.account_id.in_(included_ids),
                 Transaction.transaction_date >= month_start,
                 Transaction.transaction_date <= today)
     )).first()
@@ -314,6 +332,7 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         ).where(Transaction.household_id == hid,
+                Transaction.account_id.in_(included_ids),
                 Transaction.transaction_date >= three_ago,
                 Transaction.transaction_date < month_start)
     )).first()
@@ -322,14 +341,14 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
 
     # ── 3. Net worth (opening balances + all transactions) ──
     accs = (await db.execute(
-        select(Account).where(Account.household_id == hid, Account.is_active == True)
+        select(Account).where(Account.household_id == hid, Account.is_active == True, Account.include_in_totals == True)
     )).scalars().all()
     opening = sum(float(a.opening_balance) for a in accs)
     tx_row = (await db.execute(
         select(
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
-        ).where(Transaction.household_id == hid)
+        ).where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids))
     )).first()
     net_worth = opening + float(tx_row.inc or 0) - float(tx_row.exp or 0)
 
@@ -421,6 +440,8 @@ async def spending_by_category(
     else:
         month_end = month_start.replace(month=month_start.month + 1)
 
+    included_ids = select(Account.id).where(Account.household_id == household.id, Account.include_in_totals == True)
+
     result = await db.execute(
         select(
             Transaction.category_id,
@@ -428,6 +449,7 @@ async def spending_by_category(
         )
         .where(
             Transaction.household_id == household.id,
+            Transaction.account_id.in_(included_ids),
             Transaction.kind == kind,
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date < month_end,

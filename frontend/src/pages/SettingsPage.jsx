@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCategories, createCategory, updateCategory, deleteCategory,
-  getAccounts, createAccount, updateAccount, deleteAccount,
+  getAccounts, createAccount, deleteAccount,
 } from '../api/finance'
+import EditAccountSheet from '../components/EditAccountSheet'
+import AddAccountSheet from '../components/AddAccountSheet'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -245,13 +247,20 @@ function AccountsTab() {
     <>
       <div style={s.group}>
         {accounts.map(acc => (
-          <div key={acc.id} style={s.row}>
+          <div key={acc.id} style={{ ...s.row, opacity: acc.include_in_totals ? 1 : 0.55 }}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: C.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>
               {typeInfo(acc.type).icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: C.ink, fontSize: '0.95rem', fontWeight: 600 }}>{acc.name}</div>
-              {acc.institution && <div style={{ color: C.muted, fontSize: '0.75rem' }}>{acc.institution}</div>}
+              <div style={{ color: C.ink, fontSize: '0.95rem', fontWeight: 600 }}>
+                {acc.nickname || acc.name}
+                {acc.nickname && <span style={{ color: C.muted, fontWeight: 400, fontSize: '0.75rem', marginRight: 6 }}>{acc.name}</span>}
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                {acc.institution && <span style={{ color: C.muted, fontSize: '0.72rem' }}>{acc.institution}</span>}
+                {!acc.show_on_dashboard && <span style={{ fontSize: '0.68rem', color: C.muted, background: C.line, borderRadius: 4, padding: '0 4px' }}>מוסתר</span>}
+                {!acc.include_in_totals && <span style={{ fontSize: '0.68rem', color: C.expense, background: C.expense + '22', borderRadius: 4, padding: '0 4px' }}>לא בחישוב</span>}
+              </div>
             </div>
             <span style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: acc.balance >= 0 ? C.income : C.expense, flexShrink: 0, marginInlineEnd: 6 }}>
               {fmt(acc.balance)}
@@ -275,8 +284,8 @@ function AccountsTab() {
 
       <button style={s.addBtn} onClick={() => setAdding(true)}>+ הוסף חשבון</button>
 
-      {editing && <AccountSheet acc={editing} onClose={() => setEditing(null)} />}
-      {adding && <AccountSheet acc={null} onClose={() => setAdding(false)} />}
+      {editing && <EditAccountSheet account={editing} onClose={() => setEditing(null)} />}
+      {adding && <AddAccountSheet onClose={() => setAdding(false)} />}
     </>
   )
 }

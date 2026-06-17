@@ -11,6 +11,8 @@ class AccountCreate(BaseModel):
     institution: Optional[str] = None
     opening_balance: float = 0
     currency: str = "ILS"
+    nickname: Optional[str] = None
+    credit_limit: Optional[float] = None
 
 
 class AccountUpdate(BaseModel):
@@ -18,6 +20,10 @@ class AccountUpdate(BaseModel):
     institution: Optional[str] = None
     opening_balance: Optional[float] = None
     is_active: Optional[bool] = None
+    nickname: Optional[str] = None
+    credit_limit: Optional[float] = None
+    show_on_dashboard: Optional[bool] = None
+    include_in_totals: Optional[bool] = None
 
 
 class AccountOut(BaseModel):
@@ -31,6 +37,11 @@ class AccountOut(BaseModel):
     balance: float = 0
     bank_balance: Optional[float] = None
     bank_balance_at: Optional[str] = None
+    nickname: Optional[str] = None
+    credit_limit: Optional[float] = None
+    show_on_dashboard: bool = True
+    include_in_totals: bool = True
+    credit_used: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
