@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { updateTransaction, getAccounts, getCategories } from '../api/finance'
+import DateInput from './DateInput'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -78,7 +79,7 @@ export default function EditTransactionSheet({ tx, onClose }) {
           </select>
 
           <input style={styles.input} placeholder="תיאור (אופציונלי)" value={form.description} onChange={set('description')} />
-          <input style={styles.input} type="date" value={form.transaction_date} onChange={set('transaction_date')} />
+          <DateInput style={styles.input} value={form.transaction_date} onChange={set('transaction_date')} />
 
           {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
 

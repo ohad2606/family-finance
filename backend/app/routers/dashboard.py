@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, case, extract
+from sqlalchemy import select, func, case, extract, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -32,7 +32,7 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         )
-        .where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids))
+        .where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids), Transaction.is_planned == False)
         .group_by(Transaction.account_id)
     )
     tx_by_account = {row.account_id: (float(row.inc), float(row.exp)) for row in tx_result}
@@ -50,7 +50,7 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
             else:
                 total_liabilities += -balance
 
-    # הכנסות והוצאות החודש
+    # הכנסות והוצאות החודש (כולל תנועות ללא חשבון, ללא מתוכננות)
     month_result = await db.execute(
         select(
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
@@ -58,7 +58,8 @@ async def summary(ctx=Depends(get_current_household), db: AsyncSession = Depends
         )
         .where(
             Transaction.household_id == hid,
-            Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
+            or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date <= today,
         )
@@ -101,7 +102,8 @@ async def cashflow(
         )
         .where(
             Transaction.household_id == household.id,
-            Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
+            or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
             Transaction.transaction_date >= start,
             Transaction.transaction_date <= today,
         )
@@ -152,7 +154,8 @@ async def annual_report(
         )
         .where(
             Transaction.household_id == household.id,
-            Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
+            or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
             Transaction.transaction_date >= year_start,
             Transaction.transaction_date <= year_end,
         )
@@ -182,7 +185,8 @@ async def annual_report(
         )
         .where(
             Transaction.household_id == household.id,
-            Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
+            or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
             Transaction.kind == "expense",
             Transaction.transaction_date >= year_start,
             Transaction.transaction_date <= year_end,
@@ -251,6 +255,7 @@ async def networth_history(
         ).where(
             Transaction.household_id == household.id,
             Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
             Transaction.transaction_date < window_start,
         )
     )
@@ -268,6 +273,7 @@ async def networth_history(
         .where(
             Transaction.household_id == household.id,
             Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
             Transaction.transaction_date >= window_start,
             Transaction.transaction_date <= today,
         )
@@ -316,7 +322,8 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         ).where(Transaction.household_id == hid,
-                Transaction.account_id.in_(included_ids),
+                Transaction.is_planned == False,
+                or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
                 Transaction.transaction_date >= month_start,
                 Transaction.transaction_date <= today)
     )).first()
@@ -332,7 +339,8 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
         ).where(Transaction.household_id == hid,
-                Transaction.account_id.in_(included_ids),
+                Transaction.is_planned == False,
+                or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
                 Transaction.transaction_date >= three_ago,
                 Transaction.transaction_date < month_start)
     )).first()
@@ -348,7 +356,7 @@ async def financial_health(ctx=Depends(get_current_household), db: AsyncSession 
         select(
             func.sum(case((Transaction.kind == "income", Transaction.amount), else_=0)).label("inc"),
             func.sum(case((Transaction.kind == "expense", Transaction.amount), else_=0)).label("exp"),
-        ).where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids))
+        ).where(Transaction.household_id == hid, Transaction.account_id.in_(included_ids), Transaction.is_planned == False)
     )).first()
     net_worth = opening + float(tx_row.inc or 0) - float(tx_row.exp or 0)
 
@@ -449,7 +457,8 @@ async def spending_by_category(
         )
         .where(
             Transaction.household_id == household.id,
-            Transaction.account_id.in_(included_ids),
+            Transaction.is_planned == False,
+            or_(Transaction.account_id.in_(included_ids), Transaction.account_id.is_(None)),
             Transaction.kind == kind,
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date < month_end,

@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getMe, logout as apiLogout } from '../api/auth'
+import { LAST_ACTIVE_KEY } from '../hooks/useAppLock'
 
 const AuthContext = createContext(null)
 
@@ -16,6 +17,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     try { await apiLogout() } catch {}
+    localStorage.removeItem(LAST_ACTIVE_KEY)
     queryClient.clear()
     window.location.replace('/welcome')
   }

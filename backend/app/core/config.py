@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@family-finance.net"
     BANK_SYNC_API_KEY: str = ""
+    BANK_SYNC_ALLOWED_HOUSEHOLD_IDS: list[int] = []
 
     @property
     def is_production(self) -> bool:

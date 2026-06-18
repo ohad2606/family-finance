@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSavings, createSavings, updateSavings, deleteSavings } from '../api/finance'
+import DateInput from '../components/DateInput'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -176,7 +177,7 @@ export default function SavingsPage({ onBack }) {
               <input style={styles.input} type="number" placeholder="חסכת עד כה (₪)" value={form.current_amount} onChange={set('current_amount')} min="0" step="1" />
               <div>
                 <label style={styles.label}>תאריך יעד (אופציונלי)</label>
-                <input style={styles.input} type="date" value={form.target_date} onChange={set('target_date')} />
+                <DateInput style={styles.input} value={form.target_date} onChange={set('target_date')} />
               </div>
 
               {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}

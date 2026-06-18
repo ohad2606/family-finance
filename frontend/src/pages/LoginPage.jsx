@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { login, register } from '../api/auth'
+import { startAuthentication } from '@simplewebauthn/browser'
+import { passkeyLoginBegin, passkeyLoginComplete } from '../api/webauthn'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -23,6 +25,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '', display_name: '', household_name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -32,6 +35,27 @@ export default function LoginPage() {
   }, [])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const loginWithPasskey = async () => {
+    setError('')
+    setPasskeyLoading(true)
+    try {
+      const options = await passkeyLoginBegin()
+      const credential = await startAuthentication(options)
+      await passkeyLoginComplete(credential)
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+      const next = searchParams.get('next')
+      navigate(next && next.startsWith('/') ? next : '/')
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setError('האימות בוטל')
+      } else {
+        setError(err.response?.data?.detail || err.message || 'שגיאה בכניסה עם טביעת אצבע')
+      }
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -65,6 +89,19 @@ export default function LoginPage() {
           <GoogleIcon />
           <span>המשך עם Google</span>
         </a>
+
+        {/* Passkey button — only shown if WebAuthn is supported */}
+        {typeof window !== 'undefined' && window.PublicKeyCredential && (
+          <button
+            type="button"
+            style={styles.passkeyBtn}
+            onClick={loginWithPasskey}
+            disabled={passkeyLoading}
+          >
+            <span style={{ fontSize: '1.1rem' }}>🔑</span>
+            <span>{passkeyLoading ? '...' : 'כניסה עם טביעת אצבע'}</span>
+          </button>
+        )}
 
         <div style={styles.divider}>
           <span style={styles.dividerLine} />
@@ -122,6 +159,13 @@ const styles = {
     padding: '0.75rem', borderRadius: 12, border: `1px solid ${C.line}`,
     background: '#fff', color: C.ink, fontFamily: 'Assistant, sans-serif',
     fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', textDecoration: 'none',
+    marginBottom: '0.75rem',
+  },
+  passkeyBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    padding: '0.75rem', borderRadius: 12, border: `1px solid ${C.line}`,
+    background: '#fff', color: C.ink, fontFamily: 'Assistant, sans-serif',
+    fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', width: '100%',
     marginBottom: '1rem',
   },
   divider: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' },

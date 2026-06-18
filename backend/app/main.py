@@ -2,12 +2,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.core.config import settings
-from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync
+from app.core.limiter import limiter
+from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync, webauthn
 from app.scheduler import start_scheduler, scheduler
 
 
@@ -17,11 +17,8 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown()
 
-
-limiter = Limiter(key_func=get_remote_address)
-
 app = FastAPI(
-    title="כספי API",
+    title="תקציב API",
     version="0.1.0",
     docs_url="/api/docs" if not settings.is_production else None,
     lifespan=lifespan,
@@ -49,8 +46,9 @@ app.include_router(loans.router, prefix="/api")
 app.include_router(savings.router, prefix="/api")
 app.include_router(household.router, prefix="/api")
 app.include_router(bank_sync.router, prefix="/api")
+app.include_router(webauthn.router, prefix="/api")
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "app": "takziv"}
+    return {"status": "ok"}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, updateRecurring, deleteRecurring, getAccounts, getCategories } from '../api/finance'
+import DateInput from '../components/DateInput'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -170,11 +171,11 @@ export default function RecurringPage({ onBack }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
                   <label style={styles.label}>תאריך ראשון</label>
-                  <input style={styles.input} type="date" value={form.next_date} onChange={set('next_date')} required />
+                  <DateInput style={styles.input} value={form.next_date} onChange={set('next_date')} required />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={styles.label}>עד תאריך (אופציונלי)</label>
-                  <input style={styles.input} type="date" value={form.end_date} onChange={set('end_date')} />
+                  <DateInput style={styles.input} value={form.end_date} onChange={set('end_date')} />
                 </div>
               </div>
 

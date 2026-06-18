@@ -89,6 +89,10 @@ async def bank_sync(
     if payload.source not in SUPPORTED_SOURCES:
         raise HTTPException(status_code=400, detail=f"Unknown source: {payload.source}")
 
+    allowed = settings.BANK_SYNC_ALLOWED_HOUSEHOLD_IDS
+    if allowed and payload.household_id not in allowed:
+        raise HTTPException(status_code=403, detail="Household not authorized for this API key")
+
     stats = {"accounts_found": 0, "txns_created": 0, "txns_skipped": 0}
 
     for acc_in in payload.accounts:

@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import Cookie, Depends, Header, HTTPException, status
 from jose import JWTError
 from sqlalchemy import select
@@ -26,12 +28,15 @@ async def get_current_user(
         user_id: str = payload.get("sub")
         if not user_id:
             raise credentials_error
+        token_version: int = payload.get("tv", 1)
     except JWTError:
         raise credentials_error
 
     result = await db.execute(select(User).where(User.id == int(user_id), User.is_active == True))
     user = result.scalar_one_or_none()
     if not user:
+        raise credentials_error
+    if user.token_version != token_version:
         raise credentials_error
     return user
 
@@ -65,5 +70,22 @@ async def verify_csrf(
     x_csrf_token: str | None = Header(default=None),
     csrf_token: str | None = Cookie(default=None),
 ) -> None:
-    if not x_csrf_token or not csrf_token or x_csrf_token != csrf_token:
+    if not x_csrf_token or not csrf_token or not secrets.compare_digest(x_csrf_token, csrf_token):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token שגוי")
+
+
+async def require_owner(
+    db: AsyncSession = Depends(get_db),
+    ctx: tuple = Depends(get_current_household),
+) -> tuple:
+    user, household = ctx
+    result = await db.execute(
+        select(HouseholdMember).where(
+            HouseholdMember.user_id == user.id,
+            HouseholdMember.household_id == household.id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member or member.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="פעולה זו מותרת לבעל הבית בלבד")
+    return user, household

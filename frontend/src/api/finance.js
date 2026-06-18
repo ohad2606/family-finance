@@ -14,6 +14,8 @@ export const getTransactions = (params) => api.get('/transactions', { params }).
 export const createTransaction = (data) => api.post('/transactions', data).then(r => r.data)
 export const updateTransaction = (id, data) => api.patch(`/transactions/${id}`, data).then(r => r.data)
 export const deleteTransaction = (id) => api.delete(`/transactions/${id}`)
+export const getPlannedTransactions = () => api.get('/transactions', { params: { is_planned: true } }).then(r => r.data)
+export const confirmPlannedTransaction = (id) => api.post(`/transactions/${id}/confirm`).then(r => r.data)
 
 export const getDashboardSummary = () => api.get('/dashboard/summary').then(r => r.data)
 

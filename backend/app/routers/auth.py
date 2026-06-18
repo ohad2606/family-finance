@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import send_reset_email
+from app.core.limiter import limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -13,6 +14,7 @@ from app.core.security import (
     decode_token,
     generate_csrf_token,
     hash_password,
+    validate_password_strength,
     verify_password,
 )
 from app.database import get_db
@@ -28,6 +30,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_OPTS = dict(httponly=True, secure=True, samesite="strict", path="/")
 
 
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, csrf_token: str) -> None:
     response.set_cookie("access_token", access_token, max_age=3600, **COOKIE_OPTS)
     response.set_cookie("refresh_token", refresh_token, max_age=86400 * 30, **COOKIE_OPTS)
@@ -40,7 +49,8 @@ def _clear_auth_cookies(response: Response) -> None:
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest, response: Response, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="כתובת מייל כבר קיימת")
@@ -69,12 +79,14 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
         entity_type="user",
         entity_id=user.id,
         detail=f"רישום משתמש חדש: {user.email}",
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("User-Agent", "")[:500],
     ))
 
     await db.commit()
 
-    access_token = create_access_token(str(user.id), household.id)
-    refresh_token = create_refresh_token(str(user.id))
+    access_token = create_access_token(str(user.id), household.id, user.token_version)
+    refresh_token = create_refresh_token(str(user.id), user.token_version)
     csrf_token = generate_csrf_token()
     _set_auth_cookies(response, access_token, refresh_token, csrf_token)
 
@@ -89,11 +101,23 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
 
 
 @router.post("/login", response_model=UserOut)
-async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(body.password, user.password_hash):
+    ip = _client_ip(request)
+    ua = request.headers.get("User-Agent", "")[:500]
+
+    if not user or not verify_password(body.password, user.password_hash or ""):
+        db.add(AuditLog(
+            action="login_failed",
+            entity_type="user",
+            detail=body.email,
+            ip_address=ip,
+            user_agent=ua,
+        ))
+        await db.commit()
         raise HTTPException(status_code=401, detail="פרטי התחברות שגויים")
 
     member_result = await db.execute(
@@ -114,11 +138,13 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
         action="login",
         entity_type="user",
         entity_id=user.id,
+        ip_address=ip,
+        user_agent=ua,
     ))
     await db.commit()
 
-    access_token = create_access_token(str(user.id), household.id)
-    refresh_token = create_refresh_token(str(user.id))
+    access_token = create_access_token(str(user.id), household.id, user.token_version)
+    refresh_token = create_refresh_token(str(user.id), user.token_version)
     csrf_token = generate_csrf_token()
     _set_auth_cookies(response, access_token, refresh_token, csrf_token)
 
@@ -133,7 +159,8 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
 
 
 @router.post("/refresh")
-async def refresh(response: Response, refresh_token: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def refresh(request: Request, response: Response, refresh_token: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     creds_error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="לא מחובר")
     if not refresh_token:
         raise creds_error
@@ -142,12 +169,13 @@ async def refresh(response: Response, refresh_token: str | None = Cookie(default
         if payload.get("type") != "refresh":
             raise creds_error
         user_id = int(payload.get("sub"))
+        token_version = payload.get("tv", 1)
     except (JWTError, TypeError, ValueError):
         raise creds_error
 
     result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
     user = result.scalar_one_or_none()
-    if not user:
+    if not user or user.token_version != token_version:
         raise creds_error
 
     member_result = await db.execute(
@@ -159,15 +187,30 @@ async def refresh(response: Response, refresh_token: str | None = Cookie(default
     if not member:
         raise creds_error
 
-    new_access = create_access_token(str(user.id), member.household_id)
-    new_refresh = create_refresh_token(str(user.id))
+    new_access = create_access_token(str(user.id), member.household_id, user.token_version)
+    new_refresh = create_refresh_token(str(user.id), user.token_version)
     csrf = generate_csrf_token()
     _set_auth_cookies(response, new_access, new_refresh, csrf)
     return {"ok": True}
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(
+    response: Response,
+    access_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if access_token:
+        try:
+            payload = decode_token(access_token)
+            user_id = int(payload.get("sub", 0))
+            result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+            user = result.scalar_one_or_none()
+            if user:
+                user.token_version = user.token_version + 1
+                await db.commit()
+        except Exception:
+            pass
     _clear_auth_cookies(response)
     return {"ok": True}
 
@@ -211,7 +254,8 @@ async def update_me(body: dict, ctx: tuple = Depends(get_current_household), db:
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: dict, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: dict, db: AsyncSession = Depends(get_db)):
     email = (body.get("email") or "").strip().lower()
     # Always return 200 to avoid user enumeration
     result = await db.execute(select(User).where(User.email == email, User.is_active == True))
@@ -227,13 +271,17 @@ async def forgot_password(body: dict, db: AsyncSession = Depends(get_db)):
 async def reset_password(body: dict, db: AsyncSession = Depends(get_db)):
     token = (body.get("token") or "").strip()
     new_password = (body.get("password") or "")
-    if len(new_password) < 8:
-        raise HTTPException(400, "הסיסמה חייבת להכיל לפחות 8 תווים")
+    try:
+        validate_password_strength(new_password)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     try:
         payload = decode_token(token)
         if payload.get("type") != "reset":
             raise HTTPException(400, "קישור לא תקין")
         user_id = int(payload["sub"])
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(400, "הקישור פג תוקף או לא תקין")
     result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
@@ -241,6 +289,7 @@ async def reset_password(body: dict, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(400, "משתמש לא נמצא")
     user.password_hash = hash_password(new_password)
+    user.token_version = user.token_version + 1
     await db.commit()
     return {"ok": True}
 
@@ -256,8 +305,11 @@ async def change_password(body: dict, ctx: tuple = Depends(get_current_household
     new_pw = (body.get("new_password") or "")
     if not verify_password(current, u.password_hash):
         raise HTTPException(400, "הסיסמה הנוכחית שגויה")
-    if len(new_pw) < 8:
-        raise HTTPException(400, "הסיסמה החדשה חייבת להכיל לפחות 8 תווים")
+    try:
+        validate_password_strength(new_pw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     u.password_hash = hash_password(new_pw)
+    u.token_version = u.token_version + 1
     await db.commit()
     return {"ok": True}

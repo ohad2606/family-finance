@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { updateMe, changePassword } from '../api/auth'
+import { startRegistration } from '@simplewebauthn/browser'
+import { passkeyRegisterBegin, passkeyRegisterComplete, listCredentials, deleteCredential } from '../api/webauthn'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -24,6 +26,53 @@ export default function ProfilePage({ onBack }) {
   const [pwSaved, setPwSaved] = useState(false)
 
   const isGoogleUser = !user?.email?.includes('@') ? false : true // approximation; backend blocks change-password for google users
+
+  // Passkey state
+  const [passkeys, setPasskeys] = useState([])
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeyError, setPasskeyError] = useState('')
+  const webAuthnSupported = typeof window !== 'undefined' && !!window.PublicKeyCredential
+
+  const loadPasskeys = useCallback(async () => {
+    if (!webAuthnSupported) return
+    try {
+      const data = await listCredentials()
+      setPasskeys(data)
+    } catch {
+      // silently ignore — user may not have any
+    }
+  }, [webAuthnSupported])
+
+  useEffect(() => { loadPasskeys() }, [loadPasskeys])
+
+  const addPasskey = async () => {
+    setPasskeyError('')
+    setPasskeyLoading(true)
+    try {
+      const options = await passkeyRegisterBegin()
+      const credential = await startRegistration(options)
+      await passkeyRegisterComplete(credential, 'טביעת אצבע')
+      await loadPasskeys()
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setPasskeyError('ההוספה בוטלה')
+      } else {
+        setPasskeyError(err.response?.data?.detail || err.message || 'שגיאה בהוספת טביעת אצבע')
+      }
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  const removePasskey = async (id) => {
+    setPasskeyError('')
+    try {
+      await deleteCredential(id)
+      setPasskeys(prev => prev.filter(p => p.id !== id))
+    } catch (err) {
+      setPasskeyError(err.response?.data?.detail || 'שגיאה במחיקה')
+    }
+  }
 
   const saveName = useMutation({
     mutationFn: () => updateMe({ display_name: nameVal.trim() }),
@@ -122,6 +171,46 @@ export default function ProfilePage({ onBack }) {
           </form>
         </div>
 
+        {/* Passkeys — only shown if WebAuthn is supported */}
+        {webAuthnSupported && (
+          <>
+            <div style={s.sectionLabel}>כניסה מהירה</div>
+            <div style={s.card}>
+              {passkeys.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  {passkeys.map(pk => (
+                    <div key={pk.id} style={s.passkeyRow}>
+                      <span style={{ fontSize: '1.1rem' }}>🔑</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: C.ink }}>{pk.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: C.muted }}>
+                          נוצר: {pk.created_at ? new Date(pk.created_at).toLocaleDateString('he-IL') : '—'}
+                          {pk.last_used_at && ` · שימוש אחרון: ${new Date(pk.last_used_at).toLocaleDateString('he-IL')}`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removePasskey(pk.id)}
+                        style={s.deletePasskeyBtn}
+                        title="מחק"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {passkeyError && <p style={s.errText}>{passkeyError}</p>}
+              <button
+                style={{ ...s.primaryBtn, background: C.brass, opacity: passkeyLoading ? 0.6 : 1 }}
+                onClick={addPasskey}
+                disabled={passkeyLoading}
+              >
+                {passkeyLoading ? 'מוסיף...' : '+ הוסף טביעת אצבע'}
+              </button>
+            </div>
+          </>
+        )}
+
         {/* Sign out */}
         <div style={s.sectionLabel}>חשבון</div>
         <div style={s.card}>
@@ -149,4 +238,6 @@ const s = {
   primaryBtn: { width: '100%', padding: '0.75rem', background: C.ink, color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '0.95rem' },
   errText: { color: C.expense, fontSize: '0.82rem', margin: '6px 0 10px', textAlign: 'center' },
   successBox: { background: '#D1FAE5', color: C.income, borderRadius: 10, padding: '0.6rem 0.9rem', marginBottom: 14, fontSize: '0.88rem', fontWeight: 600 },
+  passkeyRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '0.5rem 0', borderBottom: `1px solid ${C.line}` },
+  deletePasskeyBtn: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '0.9rem', padding: '2px 6px', borderRadius: 6, flexShrink: 0 },
 }

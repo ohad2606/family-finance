@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getTransactions, deleteTransaction, getAccounts, getCategories } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import EditTransactionSheet from '../components/EditTransactionSheet'
+import DateInput from '../components/DateInput'
 import api from '../api/client'
 
 const C = {
@@ -141,9 +142,9 @@ export default function TransactionsPage({ onBack }) {
           </select>
         </div>
         <div style={styles.filterRow}>
-          <input style={styles.dateInput} type="date" value={filters.from_date} onChange={setFilter('from_date')} />
+          <DateInput style={styles.dateInput} value={filters.from_date} onChange={setFilter('from_date')} />
           <span style={{ color: C.muted, alignSelf: 'center', flexShrink: 0 }}>—</span>
-          <input style={styles.dateInput} type="date" value={filters.to_date} onChange={setFilter('to_date')} />
+          <DateInput style={styles.dateInput} value={filters.to_date} onChange={setFilter('to_date')} />
           {hasFilters && (
             <button style={styles.clearBtn} onClick={clearFilters}>נקה</button>
           )}

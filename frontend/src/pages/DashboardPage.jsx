@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync } from '../api/finance'
+import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync, getPlannedTransactions, confirmPlannedTransaction, deleteTransaction } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
@@ -25,9 +25,11 @@ export default function DashboardPage() {
 
   const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
 
+  const qc = useQueryClient()
   const { data: summary, isLoading: sumLoading } = useQuery({ queryKey: ['dashboard-summary'], queryFn: getDashboardSummary })
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
-  const { data: transactions = [] } = useQuery({ queryKey: ['transactions', { limit: 10 }], queryFn: () => getTransactions({ limit: 10 }) })
+  const { data: transactions = [] } = useQuery({ queryKey: ['transactions', { limit: 10 }], queryFn: () => getTransactions({ limit: 10, is_planned: false }) })
+  const { data: plannedTxs = [] } = useQuery({ queryKey: ['planned-transactions'], queryFn: getPlannedTransactions })
   const { data: cashflow = [] } = useQuery({ queryKey: ['cashflow'], queryFn: () => getCashflow(6) })
   const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr) })
   const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
@@ -45,6 +47,26 @@ export default function DashboardPage() {
   const bankSyncStatus = bankSyncData.syncs
   const bankSyncPending = bankSyncData.has_pending
   const [triggering, setTriggering] = useState(false)
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const plannedDue = plannedTxs.filter(t => t.transaction_date <= todayStr)
+  const plannedUpcoming = plannedTxs.filter(t => t.transaction_date > todayStr)
+
+  const invalidatePlanned = () => {
+    qc.invalidateQueries({ queryKey: ['planned-transactions'] })
+    qc.invalidateQueries({ queryKey: ['transactions'] })
+    qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    qc.invalidateQueries({ queryKey: ['accounts'] })
+  }
+
+  const confirmMutation = useMutation({
+    mutationFn: confirmPlannedTransaction,
+    onSuccess: invalidatePlanned,
+  })
+  const cancelMutation = useMutation({
+    mutationFn: deleteTransaction,
+    onSuccess: invalidatePlanned,
+  })
 
   const overBudget = budget.filter(b => b.planned > 0 && b.actual > b.planned)
 
@@ -209,6 +231,80 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* Planned transactions — due today or overdue */}
+        {plannedDue.length > 0 && (
+          <section style={{ background: '#FFF7ED', borderRadius: 18, padding: '1rem', border: '1px solid #FED7AA' }}>
+            <div style={styles.sectionHeader}>
+              <h2 style={{ ...styles.sectionTitle, color: '#B45309', margin: '0 0 0.75rem' }}>
+                📅 הוצאות מתוכננות — ממתינות לאישור
+              </h2>
+            </div>
+            <div style={styles.txList}>
+              {plannedDue.map(tx => {
+                const isConfirming = confirmMutation.isPending && confirmMutation.variables === tx.id
+                const isCancelling = cancelMutation.isPending && cancelMutation.variables === tx.id
+                const isOverdue = tx.transaction_date < todayStr
+                return (
+                  <div key={tx.id} style={{ padding: '0.75rem 0', borderBottom: `1px solid #FED7AA` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, color: C.ink, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {tx.description || tx.category_name || '—'}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: isOverdue ? C.expense : '#B45309' }}>
+                          {isOverdue ? `⚠ מאחר — ${new Date(tx.transaction_date).toLocaleDateString('he-IL')}` : 'היום'}
+                        </p>
+                      </div>
+                      <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '1rem', color: C.expense, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                        -{fmt(tx.amount)}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        style={{ flex: 1, padding: '0.45rem', background: '#16A34A', color: '#fff', border: 'none', borderRadius: 10, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', opacity: isConfirming ? 0.6 : 1 }}
+                        disabled={isConfirming || isCancelling}
+                        onClick={() => confirmMutation.mutate(tx.id)}
+                      >
+                        {isConfirming ? '...' : '✓ קרה'}
+                      </button>
+                      <button
+                        style={{ flex: 1, padding: '0.45rem', background: 'transparent', color: C.expense, border: `1px solid ${C.expense}`, borderRadius: 10, fontFamily: 'Assistant, sans-serif', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', opacity: isCancelling ? 0.6 : 1 }}
+                        disabled={isConfirming || isCancelling}
+                        onClick={() => cancelMutation.mutate(tx.id)}
+                      >
+                        {isCancelling ? '...' : '✕ לא קרה — בטל'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Planned transactions — upcoming */}
+        {plannedUpcoming.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={{ ...styles.sectionTitle, margin: '0 0 0.75rem' }}>📅 הוצאות מתוכננות</h2>
+            <div style={styles.txList}>
+              {plannedUpcoming.map(tx => {
+                const daysLeft = Math.ceil((new Date(tx.transaction_date) - new Date()) / 86400000)
+                return (
+                  <div key={tx.id} style={styles.txRow}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={styles.txDesc}>{tx.description || tx.category_name || '—'}</p>
+                      <p style={styles.txMeta}>
+                        {tx.transaction_date} · {daysLeft === 1 ? 'מחר' : `עוד ${daysLeft} ימים`}
+                      </p>
+                    </div>
+                    <p style={{ ...styles.txAmount, color: C.expense }}>-{fmt(tx.amount)}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Cashflow chart */}
         {cashflow.some(m => m.income > 0 || m.expense > 0) && (
           <section style={styles.section}>
@@ -265,35 +361,63 @@ export default function DashboardPage() {
         {/* Loans */}
         {loans.filter(l => l.is_active).length > 0 && (() => {
           const activeLoans = loans.filter(l => l.is_active)
-          const totalMonthly = activeLoans.reduce((s, l) => s + l.monthly_payment, 0)
+          const mortgages = activeLoans.filter(l => l.loan_type === 'mortgage')
+          const otherLoans = activeLoans.filter(l => l.loan_type !== 'mortgage')
+          const totalMortgageMonthly = mortgages.reduce((s, l) => s + l.monthly_payment, 0)
+          const totalLoansMonthly = otherLoans.reduce((s, l) => s + l.monthly_payment, 0)
           const totalRemaining = activeLoans.reduce((s, l) => s + l.balance_remaining, 0)
           const TYPE_ICONS = { mortgage: '🏠', personal: '💳', car: '🚗', student: '🎓', other: '📄' }
+          const payDay = l => l.payment_day || parseInt(l.start_date.slice(8, 10), 10)
+          const sortByDay = arr => [...arr].sort((a, b) => payDay(a) - payDay(b))
+
+          const LoanGroup = ({ title, groupLoans, totalMonthly }) => (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: C.muted, letterSpacing: '0.03em' }}>{title}</span>
+                <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1rem', color: C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalMonthly)}<span style={{ fontSize: '0.7rem', fontWeight: 400, color: C.muted }}>/חד׳</span></span>
+              </div>
+              {sortByDay(groupLoans).map(l => (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: `1px solid ${C.line}` }}>
+                  <span style={{ fontSize: '0.95rem', flexShrink: 0 }}>{TYPE_ICONS[l.loan_type] || '📄'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</p>
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: C.muted }}>ב-{payDay(l)} לחודש · {l.months_remaining} חד׳ נותרו</p>
+                  </div>
+                  <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '0.88rem', color: C.expense, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{fmt(l.monthly_payment)}</p>
+                </div>
+              ))}
+            </div>
+          )
+
           return (
             <section style={styles.section}>
               <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>הלוואות</h2>
+                <h2 style={styles.sectionTitle}>הלוואות ומשכנתאות</h2>
                 <button style={styles.addBtn} onClick={() => navigate('/loans')}>הכל</button>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px 10px', borderBottom: `1px solid ${C.line}`, marginBottom: 10 }}>
+
+              {/* Totals bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px 10px', borderBottom: `1px solid ${C.line}`, marginBottom: 12 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>תשלום חודשי כולל</p>
-                  <p style={{ margin: '2px 0 0', fontFamily: 'Heebo', fontWeight: 700, color: C.expense, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalMonthly)}</p>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>סה"כ חודשי</p>
+                  <p style={{ margin: '2px 0 0', fontFamily: 'Heebo', fontWeight: 700, color: C.expense, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalMortgageMonthly + totalLoansMonthly)}</p>
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>יתרה לפירעון</p>
                   <p style={{ margin: '2px 0 0', fontFamily: 'Heebo', fontWeight: 700, color: C.ink, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalRemaining)}</p>
                 </div>
               </div>
-              {activeLoans.slice(0, 3).map(l => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: `1px solid ${C.line}` }}>
-                  <span style={{ fontSize: '1rem' }}>{TYPE_ICONS[l.loan_type] || '📄'}</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: C.ink }}>{l.name}</p>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>{l.months_remaining} חודשים נותרו</p>
-                  </div>
-                  <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '0.88rem', color: C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmt(l.monthly_payment)}/חד׳</p>
-                </div>
-              ))}
+
+              {/* Mortgages group */}
+              {mortgages.length > 0 && <LoanGroup title="משכנתאות" groupLoans={mortgages} totalMonthly={totalMortgageMonthly} />}
+
+              {/* Divider between groups */}
+              {mortgages.length > 0 && otherLoans.length > 0 && (
+                <div style={{ height: 1, background: C.line, margin: '10px 0' }} />
+              )}
+
+              {/* Other loans group */}
+              {otherLoans.length > 0 && <LoanGroup title="הלוואות" groupLoans={otherLoans} totalMonthly={totalLoansMonthly} />}
             </section>
           )
         })()}

@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean, Date, DateTime, Enum, ForeignKey,
-    Integer, Numeric, String, Text, func,
+    Integer, Numeric, SmallInteger, String, Text, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -82,7 +82,7 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False, index=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False, index=True)
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
     kind: Mapped[str] = mapped_column(Enum("income", "expense", name="transaction_kind"), nullable=False)
@@ -93,11 +93,12 @@ class Transaction(Base):
         default="manual",
         nullable=False,
     )
+    is_planned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     external_ref: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    account: Mapped["Account"] = relationship(back_populates="transactions")
+    account: Mapped["Account | None"] = relationship(back_populates="transactions")
     category: Mapped["Category | None"] = relationship(back_populates="transactions")
 
 
@@ -143,6 +144,10 @@ class Loan(Base):
     term_months: Mapped[int] = mapped_column(Integer, nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     monthly_payment: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)  # override
+    first_payment: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)  # month-1 override (fees + pro-rated)
+    payment_day: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    interest_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default='fixed')
+    cpi_rate: Mapped[float | None] = mapped_column(Numeric(6, 4), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -128,8 +128,8 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     _, household = row
     await db.commit()
 
-    access_token = create_access_token(str(user.id), household.id)
-    refresh_token = create_refresh_token(str(user.id))
+    access_token = create_access_token(str(user.id), household.id, user.token_version)
+    refresh_token = create_refresh_token(str(user.id), user.token_version)
     csrf = generate_csrf_token()
 
     resp = RedirectResponse(url=FRONTEND_URL)

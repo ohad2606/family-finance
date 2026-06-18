@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getLoans, createLoan, updateLoan, deleteLoan, getLoanSchedule } from '../api/finance'
+import DateInput from '../components/DateInput'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -12,11 +13,59 @@ const fmtPct = n => `${Number(n).toFixed(2)}%`
 
 const TYPE_LABELS = { mortgage: 'משכנתא', personal: 'אישית', car: 'רכב', student: 'סטודנטים', other: 'אחר' }
 const TYPE_ICONS = { mortgage: '🏠', personal: '💳', car: '🚗', student: '🎓', other: '📄' }
+const TRACK_LABELS = { fixed: 'קל"צ', prime: 'פריים', cpi_linked: 'צמוד מדד' }
+
+function LoanCard({ loan, onEdit, onDelete, onSchedule }) {
+  const pct = loan.term_months > 0 ? loan.months_elapsed / loan.term_months : 0
+  const trackLabel = TRACK_LABELS[loan.interest_type] || loan.interest_type
+  return (
+    <div style={styles.loanCard}>
+      <div style={styles.loanTop}>
+        <span style={styles.loanIcon}>{TYPE_ICONS[loan.loan_type] || '📄'}</span>
+        <div style={{ flex: 1 }}>
+          <p style={styles.loanName}>{loan.name}</p>
+          <p style={styles.loanMeta}>{TYPE_LABELS[loan.loan_type]} · {trackLabel} · {fmtPct(loan.interest_rate)}</p>
+        </div>
+        <div style={{ textAlign: 'left' }}>
+          <p style={styles.loanBalance}>{fmt(loan.balance_remaining)}</p>
+          <p style={styles.loanBalanceLbl}>יתרה</p>
+        </div>
+      </div>
+      <div style={styles.barTrack}>
+        <div style={{ ...styles.barFill, width: `${Math.min(pct * 100, 100)}%` }} />
+      </div>
+      <div style={styles.loanProgressRow}>
+        <span style={{ fontSize: '0.7rem', color: C.muted }}>{loan.months_elapsed} / {loan.term_months} חודשים</span>
+        <span style={{ fontSize: '0.7rem', color: C.muted }}>{Math.round(pct * 100)}%</span>
+      </div>
+      <div style={styles.loanStats}>
+        <div style={styles.loanStat}>
+          <span style={{ ...styles.loanStatVal, color: C.expense }}>{fmt(loan.monthly_payment)}</span>
+          <span style={styles.loanStatLbl}>החזר חודשי</span>
+        </div>
+        <div style={styles.loanStat}>
+          <span style={styles.loanStatVal}>{loan.months_remaining}</span>
+          <span style={styles.loanStatLbl}>חודשים נותרו</span>
+        </div>
+        <div style={styles.loanStat}>
+          <span style={{ ...styles.loanStatVal, color: C.muted }}>{fmt(loan.total_interest)}</span>
+          <span style={styles.loanStatLbl}>סה"כ ריבית</span>
+        </div>
+      </div>
+      <div style={styles.loanActions}>
+        <button style={styles.schedBtn} onClick={() => onSchedule(loan.id)}>לוח סילוקין</button>
+        <button style={styles.editSmallBtn} onClick={() => onEdit(loan)}>עריכה</button>
+        <button style={styles.deleteSmallBtn} onClick={() => onDelete(loan)}>מחק</button>
+      </div>
+    </div>
+  )
+}
 
 const emptyForm = () => ({
   name: '', loan_type: 'mortgage', principal: '', interest_rate: '',
   term_months: '', start_date: new Date().toISOString().slice(0, 10),
-  monthly_payment: '', notes: '',
+  monthly_payment: '', first_payment: '', notes: '',
+  interest_type: 'fixed', cpi_rate: '', payment_day: '',
 })
 
 export default function LoansPage({ onBack }) {
@@ -54,7 +103,11 @@ export default function LoansPage({ onBack }) {
       name: loan.name, loan_type: loan.loan_type, principal: String(loan.principal),
       interest_rate: String(loan.interest_rate), term_months: String(loan.term_months),
       start_date: loan.start_date, monthly_payment: loan.monthly_payment ? String(loan.monthly_payment) : '',
+      first_payment: loan.first_payment ? String(loan.first_payment) : '',
       notes: loan.notes || '',
+      interest_type: loan.interest_type || 'fixed',
+      cpi_rate: loan.cpi_rate ? String(loan.cpi_rate) : '',
+      payment_day: loan.payment_day ? String(loan.payment_day) : '',
     })
     setError('')
     setSheet(loan)
@@ -72,13 +125,43 @@ export default function LoansPage({ onBack }) {
       term_months: parseInt(form.term_months),
       start_date: form.start_date,
       monthly_payment: form.monthly_payment ? parseFloat(form.monthly_payment) : null,
+      first_payment: form.first_payment ? parseFloat(form.first_payment) : null,
       notes: form.notes || null,
+      interest_type: form.interest_type,
+      cpi_rate: form.cpi_rate ? parseFloat(form.cpi_rate) : null,
+      payment_day: form.payment_day ? parseInt(form.payment_day) : null,
     }
     saveMut.mutate(payload)
   }
 
-  const totalDebt = loans.filter(l => l.is_active).reduce((s, l) => s + l.balance_remaining, 0)
+  const activeLoans = loans.filter(l => l.is_active)
+  const mortgages = activeLoans.filter(l => l.loan_type === 'mortgage')
+  const otherLoans = activeLoans.filter(l => l.loan_type !== 'mortgage')
+  const totalDebt = activeLoans.reduce((s, l) => s + l.balance_remaining, 0)
   const schedLoan = scheduleId ? loans.find(l => l.id === scheduleId) : null
+
+  const nextPaymentDate = (loan) => {
+    const today = new Date()
+    const day = loan.payment_day || parseInt(loan.start_date.slice(8, 10), 10)
+    const thisMonth = new Date(today.getFullYear(), today.getMonth(), day)
+    return thisMonth > today ? thisMonth : new Date(today.getFullYear(), today.getMonth() + 1, day)
+  }
+
+  const groupNextPayment = (group) => {
+    if (!group.length) return null
+    return group.map(nextPaymentDate).sort((a, b) => a - b)[0]
+  }
+
+  const fmtPaymentDate = (d) => {
+    if (!d) return '—'
+    const today = new Date()
+    const diff = Math.ceil((d - today) / 86400000)
+    const label = d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })
+    if (diff <= 0) return `היום · ${label}`
+    if (diff === 1) return `מחר · ${label}`
+    if (diff <= 7) return `עוד ${diff} ימים · ${label}`
+    return label
+  }
 
   return (
     <div style={styles.page}>
@@ -134,10 +217,14 @@ export default function LoansPage({ onBack }) {
       ) : (
         /* Loans list */
         <main style={styles.main}>
-          {loans.some(l => l.is_active) && (
+          {/* Total debt bar */}
+          {activeLoans.length > 0 && (
             <div style={styles.totalCard}>
               <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>סה"כ חוב</p>
               <p style={styles.totalVal}>{fmt(totalDebt)}</p>
+              <p style={{ margin: '2px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>
+                {fmt(mortgages.reduce((s,l)=>s+l.monthly_payment,0) + otherLoans.reduce((s,l)=>s+l.monthly_payment,0))} לחודש
+              </p>
             </div>
           )}
 
@@ -148,52 +235,75 @@ export default function LoansPage({ onBack }) {
                 <button style={styles.emptyAction} onClick={openAdd}>הוסף הלוואה</button>
               </div>
             ) : (
-              <div style={styles.list}>
-                {loans.map(loan => {
-                  const pct = Math.max(0, Math.min(1, 1 - loan.balance_remaining / loan.principal))
-                  return (
-                    <div key={loan.id} style={{ ...styles.loanCard, opacity: loan.is_active ? 1 : 0.55 }}>
-                      <div style={styles.loanTop}>
-                        <span style={styles.loanIcon}>{TYPE_ICONS[loan.loan_type]}</span>
-                        <div style={{ flex: 1 }}>
-                          <p style={styles.loanName}>{loan.name}</p>
-                          <p style={styles.loanMeta}>{TYPE_LABELS[loan.loan_type]} · {fmtPct(loan.interest_rate)} · {loan.term_months} חודשים</p>
-                        </div>
-                        <div style={{ textAlign: 'left' }}>
-                          <p style={styles.loanBalance}>{fmt(loan.balance_remaining)}</p>
-                          <p style={styles.loanBalanceLbl}>יתרה</p>
-                        </div>
+              <>
+                {/* ── Mortgages section ── */}
+                {mortgages.length > 0 && (
+                  <div style={styles.groupSection}>
+                    <div style={styles.groupHeader}>
+                      <span style={styles.groupTitle}>🏠 משכנתאות</span>
+                    </div>
+                    {/* Group summary */}
+                    <div style={styles.groupSummary}>
+                      <div style={styles.groupSumItem}>
+                        <span style={styles.groupSumVal}>{fmt(mortgages.reduce((s,l)=>s+l.balance_remaining,0))}</span>
+                        <span style={styles.groupSumLbl}>יתרה כוללת</span>
                       </div>
-
-                      {/* Progress bar — repayment */}
-                      <div style={styles.barTrack}>
-                        <div style={{ ...styles.barFill, width: `${pct * 100}%` }} />
+                      <div style={styles.groupSumDivider} />
+                      <div style={styles.groupSumItem}>
+                        <span style={{ ...styles.groupSumVal, color: C.expense }}>{fmt(mortgages.reduce((s,l)=>s+l.monthly_payment,0))}</span>
+                        <span style={styles.groupSumLbl}>סה"כ חודשי</span>
                       </div>
-                      <div style={styles.loanProgressRow}>
-                        <span style={{ color: C.income, fontSize: '0.72rem' }}>{fmt(loan.principal - loan.balance_remaining)} שולם</span>
-                        <span style={{ color: C.muted, fontSize: '0.72rem' }}>{loan.months_remaining} חודשים נותרו</span>
-                      </div>
-
-                      <div style={styles.loanStats}>
-                        <div style={styles.loanStat}>
-                          <span style={styles.loanStatVal}>{fmt(loan.monthly_payment)}</span>
-                          <span style={styles.loanStatLbl}>חודשי</span>
-                        </div>
-                        <div style={styles.loanStat}>
-                          <span style={{ ...styles.loanStatVal, color: C.expense }}>{fmt(loan.total_interest)}</span>
-                          <span style={styles.loanStatLbl}>סה"כ ריבית</span>
-                        </div>
-                      </div>
-
-                      <div style={styles.loanActions}>
-                        <button style={styles.schedBtn} onClick={() => setScheduleId(loan.id)}>לוח סילוקין</button>
-                        <button style={styles.editSmallBtn} onClick={() => openEdit(loan)}>עריכה</button>
-                        <button style={styles.deleteSmallBtn} onClick={() => setConfirmDelete(loan)}>מחק</button>
+                      <div style={styles.groupSumDivider} />
+                      <div style={styles.groupSumItem}>
+                        <span style={{ ...styles.groupSumVal, fontSize: '0.82rem' }}>{fmtPaymentDate(groupNextPayment(mortgages))}</span>
+                        <span style={styles.groupSumLbl}>החזר קרוב</span>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                    <div style={styles.list}>
+                      {mortgages.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={openEdit} onDelete={setConfirmDelete} onSchedule={setScheduleId} />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Other loans section ── */}
+                {otherLoans.length > 0 && (
+                  <div style={styles.groupSection}>
+                    <div style={styles.groupHeader}>
+                      <span style={styles.groupTitle}>💳 הלוואות</span>
+                    </div>
+                    {/* Group summary */}
+                    <div style={styles.groupSummary}>
+                      <div style={styles.groupSumItem}>
+                        <span style={styles.groupSumVal}>{fmt(otherLoans.reduce((s,l)=>s+l.balance_remaining,0))}</span>
+                        <span style={styles.groupSumLbl}>יתרה כוללת</span>
+                      </div>
+                      <div style={styles.groupSumDivider} />
+                      <div style={styles.groupSumItem}>
+                        <span style={{ ...styles.groupSumVal, color: C.expense }}>{fmt(otherLoans.reduce((s,l)=>s+l.monthly_payment,0))}</span>
+                        <span style={styles.groupSumLbl}>סה"כ חודשי</span>
+                      </div>
+                      <div style={styles.groupSumDivider} />
+                      <div style={styles.groupSumItem}>
+                        <span style={{ ...styles.groupSumVal, fontSize: '0.82rem' }}>{fmtPaymentDate(groupNextPayment(otherLoans))}</span>
+                        <span style={styles.groupSumLbl}>החזר קרוב</span>
+                      </div>
+                    </div>
+                    <div style={styles.list}>
+                      {otherLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={openEdit} onDelete={setConfirmDelete} onSchedule={setScheduleId} />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Inactive loans */}
+                {loans.filter(l => !l.is_active).length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ fontSize: '0.72rem', color: C.muted, fontWeight: 700, padding: '0 4px 6px', letterSpacing: '0.04em' }}>לא פעיל</p>
+                    <div style={styles.list}>
+                      {loans.filter(l => !l.is_active).map(loan => <LoanCard key={loan.id} loan={loan} onEdit={openEdit} onDelete={setConfirmDelete} onSchedule={setScheduleId} />)}
+                    </div>
+                  </div>
+                )}
+              </>
             )
           }
         </main>
@@ -219,12 +329,28 @@ export default function LoansPage({ onBack }) {
                   <input style={styles.input} type="number" placeholder="תקופה (חודשים)" value={form.term_months} onChange={set('term_months')} min="1" step="1" required />
                   <div>
                     <label style={styles.label}>תאריך תחילת הלוואה</label>
-                    <input style={styles.input} type="date" value={form.start_date} onChange={set('start_date')} required />
+                    <DateInput style={styles.input} value={form.start_date} onChange={set('start_date')} required />
                   </div>
                 </>
               )}
 
+              <div>
+                <label style={styles.label}>מסלול ריבית</label>
+                <select style={styles.select} value={form.interest_type} onChange={set('interest_type')}>
+                  <option value="fixed">קל"צ — קבועה לא צמודה</option>
+                  <option value="prime">פריים — משתנה לא צמודה</option>
+                  <option value="cpi_linked">צמוד מדד — ריבית משתנה אג"ח</option>
+                </select>
+              </div>
+              {form.interest_type === 'cpi_linked' && (
+                <input style={styles.input} type="number" placeholder='מדד מניח שנתי (% — לדוגמה 2.5)' value={form.cpi_rate} onChange={set('cpi_rate')} min="0" step="0.1" />
+              )}
+              <div>
+                <label style={styles.label}>יום בחודש לתשלום (השאר ריק לפי תאריך תחילה)</label>
+                <input style={styles.input} type="number" placeholder="1–31" value={form.payment_day} onChange={set('payment_day')} min="1" max="31" step="1" />
+              </div>
               <input style={styles.input} type="number" placeholder="תשלום חודשי (השאר ריק לחישוב אוטומטי)" value={form.monthly_payment} onChange={set('monthly_payment')} min="0" step="0.01" />
+              <input style={styles.input} type="number" placeholder="תשלום ראשון (אם שונה — כולל פתיחת תיק, יחסי)" value={form.first_payment} onChange={set('first_payment')} min="0" step="0.01" />
               <input style={styles.input} placeholder="הערות (אופציונלי)" value={form.notes} onChange={set('notes')} />
 
               {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
@@ -287,6 +413,15 @@ const styles = {
   emptyCard: { textAlign: 'center', padding: '3rem 0' },
   empty: { color: C.muted, textAlign: 'center', padding: '2rem 0' },
   emptyAction: { padding: '0.5rem 1.25rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontWeight: 600 },
+  // Group sections
+  groupSection: { marginBottom: 20 },
+  groupHeader: { display: 'flex', alignItems: 'center', padding: '0.25rem 0.25rem 0.5rem', borderBottom: `1px solid ${C.line}`, marginBottom: 10 },
+  groupTitle: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: C.ink, letterSpacing: '0.02em' },
+  groupSummary: { background: C.card, borderRadius: 14, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', marginBottom: 10 },
+  groupSumItem: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  groupSumDivider: { width: 1, height: 32, background: C.line, flexShrink: 0 },
+  groupSumVal: { fontFamily: 'Heebo, sans-serif', fontWeight: 800, fontSize: '0.9rem', color: C.ink, fontVariantNumeric: 'tabular-nums' },
+  groupSumLbl: { fontSize: '0.65rem', color: C.muted },
   // Schedule
   schedSummary: { display: 'flex', background: C.ink, borderRadius: 16, padding: '1rem', marginBottom: 12, justifyContent: 'space-around' },
   schedStat: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },

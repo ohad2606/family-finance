@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Component, useEffect, useRef, useState } from 'react'
 import TakzivLogo from './components/TakzivLogo'
+import { useAppLock } from './hooks/useAppLock'
+import LockScreen from './components/LockScreen'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -62,6 +64,7 @@ function BottomNav() {
     { path: '/', label: 'בית', icon: '⌂' },
     { path: '/transactions', label: 'תנועות', icon: '↕' },
     { path: '/analytics', label: 'ניתוח', icon: '◑' },
+    { path: '/loans', label: 'הלוואות', icon: '🏦' },
     { path: '/savings', label: 'חיסכון', icon: '🎯' },
     { path: '/more', label: 'עוד', icon: '⋯' },
   ]
@@ -85,7 +88,6 @@ function MorePage() {
   const items = [
     { icon: '◎', label: 'תקציב', path: '/budget' },
     { icon: '↺', label: 'תשלומים חוזרים', path: '/recurring' },
-    { icon: '🏦', label: 'הלוואות ומשכנתא', path: '/loans' },
     { icon: '⚙', label: 'הגדרות', path: '/settings' },
     { icon: '⬆', label: 'ייבוא CSV', path: '/import' },
     { icon: '👨‍👩‍👧', label: 'משק הבית', path: '/household' },
@@ -199,7 +201,7 @@ function AppShell() {
         <Route path="/savings" element={<RequireAuth><SavingsPage onBack={() => navigate('/')} /></RequireAuth>} />
         <Route path="/budget" element={<RequireAuth><BudgetPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/recurring" element={<RequireAuth><RecurringPage onBack={() => navigate('/more')} /></RequireAuth>} />
-        <Route path="/loans" element={<RequireAuth><LoansPage onBack={() => navigate('/more')} /></RequireAuth>} />
+        <Route path="/loans" element={<RequireAuth><LoansPage onBack={() => navigate('/')} /></RequireAuth>} />
         <Route path="/more" element={<RequireAuth><MorePage /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><SettingsPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="/import" element={<RequireAuth><ImportPage onBack={() => navigate('/more')} /></RequireAuth>} />
@@ -217,12 +219,21 @@ function AppShell() {
   )
 }
 
+function LockGate({ children }) {
+  const { user } = useAuth()
+  const { isLocked, unlock } = useAppLock(!!user)
+  if (user && isLocked) return <LockScreen onUnlock={unlock} />
+  return children
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <AppShell />
+          <LockGate>
+            <AppShell />
+          </LockGate>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

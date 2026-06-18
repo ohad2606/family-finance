@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
+
+from app.core.security import validate_password_strength
 
 
 class RegisterRequest(BaseModel):
@@ -6,6 +8,11 @@ class RegisterRequest(BaseModel):
     password: str
     display_name: str
     household_name: str
+
+    @field_validator("password")
+    @classmethod
+    def strong_password(cls, v: str) -> str:
+        return validate_password_strength(v)
 
 
 class LoginRequest(BaseModel):

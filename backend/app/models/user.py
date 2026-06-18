@@ -15,6 +15,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    token_version: Mapped[int] = mapped_column(default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

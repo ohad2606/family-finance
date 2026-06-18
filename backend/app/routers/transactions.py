@@ -31,6 +31,7 @@ def _to_out(t: Transaction) -> TransactionOut:
         description=t.description,
         transaction_date=t.transaction_date,
         source=t.source,
+        is_planned=t.is_planned,
         created_at=t.created_at,
     )
 
@@ -38,7 +39,7 @@ def _to_out(t: Transaction) -> TransactionOut:
 _LOAD = [selectinload(Transaction.account), selectinload(Transaction.category)]
 
 
-def _filters(household_id, from_date, to_date, account_id, category_id, kind, q):
+def _filters(household_id, from_date, to_date, account_id, category_id, kind, q, is_planned=None):
     f = [Transaction.household_id == household_id]
     if from_date:
         f.append(Transaction.transaction_date >= from_date)
@@ -53,6 +54,8 @@ def _filters(household_id, from_date, to_date, account_id, category_id, kind, q)
     if q:
         term = f"%{q}%"
         f.append(Transaction.description.ilike(term))
+    if is_planned is not None:
+        f.append(Transaction.is_planned == is_planned)
     return f
 
 
@@ -66,13 +69,14 @@ async def list_transactions(
     category_id: Optional[int] = Query(None),
     kind: Optional[str] = Query(None),
     q: Optional[str] = Query(None, max_length=100),
+    is_planned: Optional[bool] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
 ):
     _, household = ctx
     result = await db.execute(
         select(Transaction)
-        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q)))
+        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q, is_planned)))
         .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
         .limit(limit).offset(offset)
         .options(*_LOAD)
@@ -127,9 +131,10 @@ async def export_transactions(
 async def create_transaction(body: TransactionCreate, ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
     user, household = ctx
 
-    acc_result = await db.execute(select(Account).where(Account.id == body.account_id, Account.household_id == household.id))
-    if not acc_result.scalar_one_or_none():
-        raise HTTPException(404, "חשבון לא נמצא")
+    if body.account_id is not None:
+        acc_result = await db.execute(select(Account).where(Account.id == body.account_id, Account.household_id == household.id))
+        if not acc_result.scalar_one_or_none():
+            raise HTTPException(404, "חשבון לא נמצא")
 
     t = Transaction(household_id=household.id, created_by=user.id, **body.model_dump())
     db.add(t)
@@ -140,6 +145,31 @@ async def create_transaction(body: TransactionCreate, ctx=Depends(get_current_ho
         select(Transaction).where(Transaction.id == t.id).options(*_LOAD)
     )
     return _to_out(result.scalar_one())
+
+
+@router.post("/{tx_id}/confirm", response_model=TransactionOut, dependencies=[Depends(verify_csrf)])
+async def confirm_planned_transaction(tx_id: int, ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+    user, household = ctx
+    result = await db.execute(
+        select(Transaction)
+        .where(Transaction.id == tx_id, Transaction.household_id == household.id)
+        .options(*_LOAD)
+    )
+    t = result.scalar_one_or_none()
+    if not t:
+        raise HTTPException(404, "תנועה לא נמצאה")
+    if not t.is_planned:
+        raise HTTPException(400, "תנועה זו אינה מתוכננת")
+
+    t.is_planned = False
+    t.transaction_date = date.today()
+    db.add(AuditLog(household_id=household.id, user_id=user.id, action="confirm_planned", entity_type="transaction", entity_id=tx_id))
+    await db.commit()
+    await db.refresh(t)
+    result2 = await db.execute(
+        select(Transaction).where(Transaction.id == tx_id).options(*_LOAD)
+    )
+    return _to_out(result2.scalar_one())
 
 
 @router.patch("/{tx_id}", response_model=TransactionOut, dependencies=[Depends(verify_csrf)])

@@ -70,12 +70,13 @@ class CategoryOut(BaseModel):
 # --- Transaction ---
 
 class TransactionCreate(BaseModel):
-    account_id: int
+    account_id: Optional[int] = None
     category_id: Optional[int] = None
     amount: float
     kind: str
     description: Optional[str] = None
     transaction_date: date
+    is_planned: bool = False
 
 
 class TransactionUpdate(BaseModel):
@@ -84,11 +85,12 @@ class TransactionUpdate(BaseModel):
     kind: Optional[str] = None
     description: Optional[str] = None
     transaction_date: Optional[date] = None
+    is_planned: Optional[bool] = None
 
 
 class TransactionOut(BaseModel):
     id: int
-    account_id: int
+    account_id: Optional[int]
     account_name: str
     category_id: Optional[int]
     category_name: Optional[str]
@@ -98,6 +100,7 @@ class TransactionOut(BaseModel):
     description: Optional[str]
     transaction_date: date
     source: str
+    is_planned: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -150,6 +153,10 @@ class LoanCreate(BaseModel):
     term_months: int
     start_date: date
     monthly_payment: Optional[float] = None
+    first_payment: Optional[float] = None
+    payment_day: Optional[int] = None
+    interest_type: str = 'fixed'
+    cpi_rate: Optional[float] = None
     notes: Optional[str] = None
 
 
@@ -157,6 +164,10 @@ class LoanUpdate(BaseModel):
     name: Optional[str] = None
     interest_rate: Optional[float] = None
     monthly_payment: Optional[float] = None
+    first_payment: Optional[float] = None
+    payment_day: Optional[int] = None
+    interest_type: Optional[str] = None
+    cpi_rate: Optional[float] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -179,6 +190,10 @@ class LoanOut(BaseModel):
     term_months: int
     start_date: date
     monthly_payment: float
+    first_payment: Optional[float]
+    payment_day: Optional[int]
+    interest_type: str
+    cpi_rate: Optional[float]
     notes: Optional[str]
     is_active: bool
     # computed

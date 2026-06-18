@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.deps import get_current_household, get_current_user, verify_csrf
+from app.deps import get_current_household, get_current_user, require_owner, verify_csrf
 from app.models.household import Household, HouseholdInvite, HouseholdMember
 from app.models.user import User
 from app.core.config import settings
@@ -74,7 +74,7 @@ async def get_household(ctx=Depends(get_current_household), db: AsyncSession = D
 
 
 @router.post("/invite", response_model=InviteOut, dependencies=[Depends(verify_csrf)])
-async def create_invite(ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+async def create_invite(ctx=Depends(require_owner), db: AsyncSession = Depends(get_db)):
     user, household = ctx
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=INVITE_TTL_DAYS)
@@ -148,7 +148,7 @@ async def join_household(token: str, db: AsyncSession = Depends(get_db), user: U
 @router.patch("/name", dependencies=[Depends(verify_csrf)])
 async def update_household_name(
     body: dict,
-    ctx=Depends(get_current_household),
+    ctx=Depends(require_owner),
     db: AsyncSession = Depends(get_db),
 ):
     _, household = ctx
@@ -163,7 +163,7 @@ async def update_household_name(
 
 
 @router.delete("/members/{member_id}", status_code=204, dependencies=[Depends(verify_csrf)])
-async def remove_member(member_id: int, ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+async def remove_member(member_id: int, ctx=Depends(require_owner), db: AsyncSession = Depends(get_db)):
     user, household = ctx
     result = await db.execute(
         select(HouseholdMember).where(
