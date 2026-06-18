@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getBudget, upsertBudget, getCategories, copyBudget } from '../api/finance'
+import BottomSheet from '../components/BottomSheet'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -194,55 +195,49 @@ export default function BudgetPage({ onBack }) {
 
       {/* Edit planned amount */}
       {editing && (
-        <div style={styles.overlay} onClick={() => setEditing(null)}>
-          <div style={styles.sheet} onClick={e => e.stopPropagation()}>
-            <div style={styles.handle} />
-            <h2 style={styles.sheetTitle}>{editing.category_icon} {editing.category_name}</h2>
-            <p style={styles.sheetSub}>תקציב חודשי מתוכנן</p>
-            <input
-              style={styles.amountInput}
-              type="number"
-              placeholder="0"
-              min="0"
-              step="1"
-              value={editVal}
-              onChange={e => setEditVal(e.target.value)}
-              autoFocus
-            />
-            <button
-              style={styles.saveBtn}
-              disabled={mutation.isPending}
-              onClick={saveEdit}
-            >
-              {mutation.isPending ? '...' : 'שמור'}
-            </button>
-          </div>
-        </div>
+        <BottomSheet onClose={() => setEditing(null)}>
+          <h2 style={styles.sheetTitle}>{editing.category_icon} {editing.category_name}</h2>
+          <p style={styles.sheetSub}>תקציב חודשי מתוכנן</p>
+          <input
+            style={styles.amountInput}
+            type="number"
+            placeholder="0"
+            min="0"
+            step="1"
+            value={editVal}
+            onChange={e => setEditVal(e.target.value)}
+            autoFocus
+          />
+          <button
+            style={styles.saveBtn}
+            disabled={mutation.isPending}
+            onClick={saveEdit}
+          >
+            {mutation.isPending ? '...' : 'שמור'}
+          </button>
+        </BottomSheet>
       )}
 
       {/* Add unbudgeted category */}
       {showAddCat && (
-        <div style={styles.overlay} onClick={() => setShowAddCat(false)}>
-          <div style={styles.sheet} onClick={e => e.stopPropagation()}>
-            <div style={styles.handle} />
-            <h2 style={styles.sheetTitle}>הוסף קטגוריה לתקציב</h2>
-            {unbudgetedCats.length === 0 ? (
-              <p style={{ color: C.muted, textAlign: 'center', padding: '1rem 0' }}>כל הקטגוריות כבר בתקציב</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                {unbudgetedCats.map(cat => (
-                  <button key={cat.id} style={styles.catPickBtn} onClick={() => {
-                    setShowAddCat(false)
-                    setEditing({ category_id: cat.id, category_name: cat.name, category_icon: cat.icon, amount_planned: 0 })
-                    setEditVal('')
-                  }}>
-                    {cat.icon} {cat.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <BottomSheet onClose={() => setShowAddCat(false)}>
+          <h2 style={styles.sheetTitle}>הוסף קטגוריה לתקציב</h2>
+          {unbudgetedCats.length === 0 ? (
+            <p style={{ color: C.muted, textAlign: 'center', padding: '1rem 0' }}>כל הקטגוריות כבר בתקציב</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {unbudgetedCats.map(cat => (
+                <button key={cat.id} style={styles.catPickBtn} onClick={() => {
+                  setShowAddCat(false)
+                  setEditing({ category_id: cat.id, category_name: cat.name, category_icon: cat.icon, amount_planned: 0 })
+                  setEditVal('')
+                }}>
+                  {cat.icon} {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </BottomSheet>
       )}
     </div>
   )

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { updateTransaction, getAccounts, getCategories } from '../api/finance'
 import DateInput from './DateInput'
+import BottomSheet from './BottomSheet'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -49,9 +50,7 @@ export default function EditTransactionSheet({ tx, onClose }) {
   }
 
   return (
-    <div style={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={styles.sheet}>
-        <div style={styles.handle} />
+    <BottomSheet onClose={onClose}>
         <h2 style={styles.title}>עריכת תנועה</h2>
 
         <div style={styles.kindToggle}>
@@ -88,8 +87,7 @@ export default function EditTransactionSheet({ tx, onClose }) {
             {mutation.isPending ? '...' : 'שמור שינויים'}
           </button>
         </form>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createAccount } from '../api/finance'
+import BottomSheet from './BottomSheet'
 
 const C = { paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E', line: '#D5D8CF', brass: '#C9A23F', expense: '#B0573C', income: '#2F6B4F' }
 
@@ -65,44 +66,41 @@ export default function AddAccountSheet({ onClose }) {
   }
 
   return (
-    <div style={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={styles.sheet}>
-        <div style={styles.handle} />
-        <h2 style={styles.title}>הוסף חשבון</h2>
-        <form onSubmit={submit} style={styles.form}>
-          <input style={styles.input} placeholder="שם החשבון" value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+    <BottomSheet onClose={onClose}>
+      <h2 style={styles.title}>הוסף חשבון</h2>
+      <form onSubmit={submit} style={styles.form}>
+        <input style={styles.input} placeholder="שם החשבון" value={form.name}
+          onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
 
-          <select style={styles.input} value={form.type}
-            onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-            {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+        <select style={styles.input} value={form.type}
+          onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+          {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
 
-          <BankInput
-            value={form.institution}
-            onChange={v => setForm(f => ({ ...f, institution: v }))}
-          />
+        <BankInput
+          value={form.institution}
+          onChange={v => setForm(f => ({ ...f, institution: v }))}
+        />
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button type="button"
-              style={{ flexShrink: 0, width: 44, height: 44, border: 'none', borderRadius: 10, background: form.balanceNeg ? C.expense : C.income, color: '#fff', fontSize: '1.3rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              onClick={() => setForm(f => ({ ...f, balanceNeg: !f.balanceNeg }))}>
-              {form.balanceNeg ? '−' : '+'}
-            </button>
-            <input style={{ ...styles.input, flex: 1, margin: 0 }} type="number" inputMode="decimal"
-              placeholder="יתרת פתיחה (ברירת מחדל: 0)"
-              value={form.opening_balance}
-              onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
-              min="0" step="0.01" />
-          </div>
-
-          {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-          <button style={styles.btn} type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? '...' : 'הוסף חשבון'}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button type="button"
+            style={{ flexShrink: 0, width: 44, height: 44, border: 'none', borderRadius: 10, background: form.balanceNeg ? C.expense : C.income, color: '#fff', fontSize: '1.3rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setForm(f => ({ ...f, balanceNeg: !f.balanceNeg }))}>
+            {form.balanceNeg ? '−' : '+'}
           </button>
-        </form>
-      </div>
-    </div>
+          <input style={{ ...styles.input, flex: 1, margin: 0 }} type="number" inputMode="decimal"
+            placeholder="יתרת פתיחה (ברירת מחדל: 0)"
+            value={form.opening_balance}
+            onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
+            min="0" step="0.01" />
+        </div>
+
+        {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+        <button style={styles.btn} type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? '...' : 'הוסף חשבון'}
+        </button>
+      </form>
+    </BottomSheet>
   )
 }
 

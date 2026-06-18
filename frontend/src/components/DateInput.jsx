@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const isoToDisplay = iso => {
   if (!iso || iso.length < 10) return ''
@@ -16,6 +16,7 @@ const digitsToIso = digits => {
 
 export default function DateInput({ value, onChange, style, required, placeholder = 'dd/mm/yyyy' }) {
   const [display, setDisplay] = useState(() => isoToDisplay(value))
+  const pickerRef = useRef(null)
 
   useEffect(() => {
     setDisplay(isoToDisplay(value))
@@ -36,17 +37,43 @@ export default function DateInput({ value, onChange, style, required, placeholde
     }
   }
 
+  const handlePicker = e => {
+    const iso = e.target.value
+    if (iso) {
+      setDisplay(isoToDisplay(iso))
+      onChange({ target: { value: iso } })
+    }
+  }
+
+  // style goes on the wrapper div (handles flex, width, etc.)
+  // input inside is transparent/borderless so the div "is" the input visually
   return (
-    <input
-      type="text"
-      inputMode="numeric"
-      placeholder={placeholder}
-      value={display}
-      onChange={handleChange}
-      style={style}
-      required={required}
-      maxLength={10}
-      dir="ltr"
-    />
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', ...style }}>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={display}
+        onChange={handleChange}
+        required={required}
+        maxLength={10}
+        dir="ltr"
+        style={{
+          flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
+          fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', textAlign: 'inherit',
+          padding: 0, paddingInlineEnd: '1.5rem',
+        }}
+      />
+      {/* hidden native date picker overlaid on the calendar icon */}
+      <input
+        ref={pickerRef}
+        type="date"
+        value={value || ''}
+        onChange={handlePicker}
+        tabIndex={-1}
+        style={{ position: 'absolute', insetInlineEnd: 0, top: 0, bottom: 0, width: '2rem', opacity: 0, cursor: 'pointer' }}
+      />
+      <span style={{ position: 'absolute', insetInlineEnd: '0.35rem', fontSize: '0.9rem', pointerEvents: 'none', lineHeight: 1 }}>📅</span>
+    </div>
   )
 }

@@ -63,7 +63,6 @@ function BottomNav() {
   const tabs = [
     { path: '/', label: 'בית', icon: '⌂' },
     { path: '/transactions', label: 'תנועות', icon: '↕' },
-    { path: '/analytics', label: 'ניתוח', icon: '◑' },
     { path: '/loans', label: 'הלוואות', icon: '🏦' },
     { path: '/savings', label: 'חיסכון', icon: '🎯' },
     { path: '/more', label: 'עוד', icon: '⋯' },
@@ -88,6 +87,7 @@ function MorePage() {
   const items = [
     { icon: '◎', label: 'תקציב', path: '/budget' },
     { icon: '↺', label: 'תשלומים חוזרים', path: '/recurring' },
+    { icon: '◑', label: 'ניתוח', path: '/analytics' },
     { icon: '⚙', label: 'הגדרות', path: '/settings' },
     { icon: '⬆', label: 'ייבוא CSV', path: '/import' },
     { icon: '👨‍👩‍👧', label: 'משק הבית', path: '/household' },

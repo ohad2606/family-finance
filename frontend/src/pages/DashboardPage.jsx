@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync, getPlannedTransactions, confirmPlannedTransaction, deleteTransaction } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
+import BottomSheet from '../components/BottomSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [showTx, setShowTx] = useState(false)
+  const [monthDetail, setMonthDetail] = useState(null)  // null | 'income' | 'expense'
 
   const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
 
@@ -38,6 +40,13 @@ export default function DashboardPage() {
   const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
   const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
   const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans })
+  const monthEnd = (() => { const d = new Date(); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0); return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}` })()
+  const { data: monthTxs = [] } = useQuery({
+    queryKey: ['month-txs', monthDetail],
+    queryFn: () => getTransactions({ from_date: thisMonthStr, to_date: monthEnd, kind: monthDetail, is_planned: false, limit: 200 }),
+    enabled: !!monthDetail,
+  })
+
   const { data: bankSyncData = { syncs: [], has_pending: false } } = useQuery({
     queryKey: ['bank-sync-status'],
     queryFn: getBankSyncStatus,
@@ -179,14 +188,16 @@ export default function DashboardPage() {
 
         {/* Month summary */}
         <div style={styles.row}>
-          <div style={{ ...styles.summaryCard, borderTop: `3px solid ${C.income}` }}>
+          <button style={{ ...styles.summaryCard, borderTop: `3px solid ${C.income}`, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.income, borderTopWidth: 3 }} onClick={() => setMonthDetail('income')}>
             <p style={styles.summaryLabel}>הכנסות {thisMonth}</p>
             <p style={{ ...styles.summaryValue, color: C.income }}>{fmt(summary?.month_income)}</p>
-          </div>
-          <div style={{ ...styles.summaryCard, borderTop: `3px solid ${C.expense}` }}>
+            <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: C.muted }}>לפירוט ←</p>
+          </button>
+          <button style={{ ...styles.summaryCard, borderTop: `3px solid ${C.expense}`, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.expense, borderTopWidth: 3 }} onClick={() => setMonthDetail('expense')}>
             <p style={styles.summaryLabel}>הוצאות {thisMonth}</p>
             <p style={{ ...styles.summaryValue, color: C.expense }}>{fmt(summary?.month_expense)}</p>
-          </div>
+            <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: C.muted }}>לפירוט ←</p>
+          </button>
         </div>
 
         {/* Budget alert */}
@@ -236,7 +247,7 @@ export default function DashboardPage() {
           <section style={{ background: '#FFF7ED', borderRadius: 18, padding: '1rem', border: '1px solid #FED7AA' }}>
             <div style={styles.sectionHeader}>
               <h2 style={{ ...styles.sectionTitle, color: '#B45309', margin: '0 0 0.75rem' }}>
-                📅 הוצאות מתוכננות — ממתינות לאישור
+                📅 תנועות מתוכננות — ממתינות לאישור
               </h2>
             </div>
             <div style={styles.txList}>
@@ -255,8 +266,8 @@ export default function DashboardPage() {
                           {isOverdue ? `⚠ מאחר — ${new Date(tx.transaction_date).toLocaleDateString('he-IL')}` : 'היום'}
                         </p>
                       </div>
-                      <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '1rem', color: C.expense, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                        -{fmt(tx.amount)}
+                      <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '1rem', color: tx.kind === 'income' ? C.income : C.expense, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                        {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -285,7 +296,7 @@ export default function DashboardPage() {
         {/* Planned transactions — upcoming */}
         {plannedUpcoming.length > 0 && (
           <section style={styles.section}>
-            <h2 style={{ ...styles.sectionTitle, margin: '0 0 0.75rem' }}>📅 הוצאות מתוכננות</h2>
+            <h2 style={{ ...styles.sectionTitle, margin: '0 0 0.75rem' }}>📅 תנועות מתוכננות</h2>
             <div style={styles.txList}>
               {plannedUpcoming.map(tx => {
                 const daysLeft = Math.ceil((new Date(tx.transaction_date) - new Date()) / 86400000)
@@ -297,7 +308,9 @@ export default function DashboardPage() {
                         {tx.transaction_date} · {daysLeft === 1 ? 'מחר' : `עוד ${daysLeft} ימים`}
                       </p>
                     </div>
-                    <p style={{ ...styles.txAmount, color: C.expense }}>-{fmt(tx.amount)}</p>
+                    <p style={{ ...styles.txAmount, color: tx.kind === 'income' ? C.income : C.expense }}>
+                      {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                    </p>
                   </div>
                 )
               })}
@@ -506,6 +519,41 @@ export default function DashboardPage() {
       <button style={styles.fab} onClick={() => setShowTx(true)}>+</button>
 
       {showTx && <AddTransactionSheet onClose={() => setShowTx(false)} />}
+
+      {/* Month detail sheet */}
+      {monthDetail && (
+        <BottomSheet onClose={() => setMonthDetail(null)} style={{ maxHeight: '80vh' }}>
+          <h2 style={{ fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C.ink, margin: '0 0 0.25rem' }}>
+            {monthDetail === 'income' ? 'הכנסות' : 'הוצאות'} — {thisMonth}
+          </h2>
+          <p style={{ margin: '0 0 1rem', fontFamily: 'Heebo', fontWeight: 800, fontSize: '1.4rem', color: monthDetail === 'income' ? C.income : C.expense, fontVariantNumeric: 'tabular-nums' }}>
+            {monthDetail === 'income' ? fmt(summary?.month_income) : fmt(summary?.month_expense)}
+          </p>
+          {monthTxs.length === 0
+            ? <p style={{ color: C.muted, textAlign: 'center', padding: '2rem 0' }}>אין תנועות</p>
+            : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {monthTxs.map(tx => (
+                  <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0', borderBottom: `1px solid ${C.line}` }}>
+                    {tx.category_icon && <span style={{ fontSize: '1rem', flexShrink: 0 }}>{tx.category_icon}</span>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tx.description || tx.category_name || '—'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: C.muted }}>
+                        {tx.account_name} · {new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
+                    <p style={{ margin: 0, fontFamily: 'Heebo', fontWeight: 700, fontSize: '0.95rem', color: monthDetail === 'income' ? C.income : C.expense, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {monthDetail === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+        </BottomSheet>
+      )}
     </div>
   )
 }

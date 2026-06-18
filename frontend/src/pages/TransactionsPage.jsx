@@ -115,7 +115,6 @@ export default function TransactionsPage({ onBack }) {
         <button style={styles.exportBtn} onClick={doExport} disabled={exporting} title="ייצוא CSV">
           {exporting ? '...' : '⬇ CSV'}
         </button>
-        <button style={styles.addBtn} onClick={() => setShowAdd(true)}>+ הוסף</button>
       </header>
 
       {/* Filters */}
@@ -214,6 +213,7 @@ export default function TransactionsPage({ onBack }) {
         </div>
       )}
 
+      <button style={styles.fab} onClick={() => setShowAdd(true)}>+</button>
       {showAdd && <AddTransactionSheet onClose={() => setShowAdd(false)} />}
       {editing && <EditTransactionSheet tx={editing} onClose={() => setEditing(null)} />}
     </div>
@@ -226,7 +226,7 @@ const styles = {
   backBtn: { background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: C.muted, padding: '0 4px' },
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: C.ink, margin: 0, flex: 1 },
   exportBtn: { padding: '0.3rem 0.7rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.muted, fontFamily: 'Assistant, sans-serif', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' },
-  addBtn: { padding: '0.3rem 0.8rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.brass, fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Assistant, sans-serif', whiteSpace: 'nowrap' },
+  fab: { position: 'fixed', bottom: 72, insetInlineEnd: 24, width: 56, height: 56, borderRadius: '50%', background: C.brass, color: '#fff', border: 'none', fontSize: '1.8rem', cursor: 'pointer', boxShadow: '0 4px 16px rgba(201,162,63,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 300, lineHeight: 1, zIndex: 40 },
   filtersWrap: { padding: '0.75rem 1rem', background: C.card, borderBottom: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', gap: 8 },
   searchInput: { padding: '0.6rem 1rem', border: `1px solid ${C.line}`, borderRadius: 10, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.9rem', color: C.ink, textAlign: 'right', outline: 'none', width: '100%', boxSizing: 'border-box' },
   filterRow: { display: 'flex', gap: 8, alignItems: 'center' },

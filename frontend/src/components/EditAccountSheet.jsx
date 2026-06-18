@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateAccount } from '../api/finance'
+import BottomSheet from './BottomSheet'
 
 const C = { paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E', line: '#D5D8CF', brass: '#C9A23F', expense: '#B0573C', income: '#2F6B4F' }
 
@@ -67,59 +68,56 @@ export default function EditAccountSheet({ account, onClose }) {
   const ACCOUNT_LABELS = { checking: 'עו"ש', savings: 'חיסכון', cash: 'מזומן', credit: 'אשראי', investment: 'השקעות' }
 
   return (
-    <div style={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={styles.sheet}>
-        <div style={styles.handle} />
-        <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: C.muted }}>{ACCOUNT_LABELS[account.type] || account.type}</p>
-        <h2 style={styles.title}>{account.name}</h2>
+    <BottomSheet onClose={onClose}>
+      <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: C.muted }}>{ACCOUNT_LABELS[account.type] || account.type}</p>
+      <h2 style={styles.title}>{account.name}</h2>
 
-        <form onSubmit={submit} style={styles.form}>
-          <input style={styles.input} placeholder="שם החשבון" value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+      <form onSubmit={submit} style={styles.form}>
+        <input style={styles.input} placeholder="שם החשבון" value={form.name}
+          onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
 
-          <input style={styles.input} placeholder="כינוי (יוצג במקום השם הרשמי)"
-            value={form.nickname}
-            onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} />
+        <input style={styles.input} placeholder="כינוי (יוצג במקום השם הרשמי)"
+          value={form.nickname}
+          onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} />
 
-          <input style={styles.input} placeholder="בנק / מוסד (אופציונלי)"
-            value={form.institution}
-            onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} />
+        <input style={styles.input} placeholder="בנק / מוסד (אופציונלי)"
+          value={form.institution}
+          onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} />
 
-          {account.type === 'credit' && (
-            <div>
-              <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: C.muted }}>מסגרת אשראי כוללת</p>
-              <input style={styles.input} type="number" inputMode="decimal"
-                placeholder="לדוגמה: 5000"
-                value={form.credit_limit}
-                onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))}
-                min="0" step="1" />
-            </div>
-          )}
-
-          <div style={{ background: C.paper, borderRadius: 14, padding: '0 0.75rem', marginTop: 4 }}>
-            <Toggle
-              value={form.show_on_dashboard}
-              onChange={v => setForm(f => ({ ...f, show_on_dashboard: v }))}
-              label="הצג במסך הבית"
-              sub="מופיע בסקירת החשבונות בראש הדשבורד"
-            />
-            <div style={{ height: 1, background: C.line }} />
-            <Toggle
-              value={form.include_in_totals}
-              onChange={v => setForm(f => ({ ...f, include_in_totals: v }))}
-              label="כלול בחישובי הכנסות/הוצאות"
-              sub="משפיע על שווי נקי, תזרים, ובריאות פיננסית"
-            />
+        {account.type === 'credit' && (
+          <div>
+            <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: C.muted }}>מסגרת אשראי כוללת</p>
+            <input style={styles.input} type="number" inputMode="decimal"
+              placeholder="לדוגמה: 5000"
+              value={form.credit_limit}
+              onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))}
+              min="0" step="1" />
           </div>
+        )}
 
-          {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+        <div style={{ background: C.paper, borderRadius: 14, padding: '0 0.75rem', marginTop: 4 }}>
+          <Toggle
+            value={form.show_on_dashboard}
+            onChange={v => setForm(f => ({ ...f, show_on_dashboard: v }))}
+            label="הצג במסך הבית"
+            sub="מופיע בסקירת החשבונות בראש הדשבורד"
+          />
+          <div style={{ height: 1, background: C.line }} />
+          <Toggle
+            value={form.include_in_totals}
+            onChange={v => setForm(f => ({ ...f, include_in_totals: v }))}
+            label="כלול בחישובי הכנסות/הוצאות"
+            sub="משפיע על שווי נקי, תזרים, ובריאות פיננסית"
+          />
+        </div>
 
-          <button style={styles.btn} type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'שומר...' : 'שמור שינויים'}
-          </button>
-        </form>
-      </div>
-    </div>
+        {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+
+        <button style={styles.btn} type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'שומר...' : 'שמור שינויים'}
+        </button>
+      </form>
+    </BottomSheet>
   )
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getLoans, createLoan, updateLoan, deleteLoan, getLoanSchedule } from '../api/finance'
 import DateInput from '../components/DateInput'
+import BottomSheet from '../components/BottomSheet'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -168,7 +169,6 @@ export default function LoansPage({ onBack }) {
       <header style={styles.header}>
         <button style={styles.backBtn} onClick={scheduleId ? () => setScheduleId(null) : onBack}>→</button>
         <h1 style={styles.title}>{scheduleId ? `לוח סילוקין — ${schedLoan?.name}` : 'הלוואות'}</h1>
-        {!scheduleId && <button style={styles.addBtn} onClick={openAdd}>+ הוסף</button>}
       </header>
 
       {/* Schedule view */}
@@ -311,56 +311,56 @@ export default function LoansPage({ onBack }) {
 
       {/* Add/Edit sheet */}
       {sheet !== null && (
-        <div style={styles.overlay} onClick={e => e.target === e.currentTarget && setSheet(null)}>
-          <div style={styles.sheet}>
-            <div style={styles.handle} />
-            <h2 style={styles.sheetTitle}>{sheet === 'add' ? 'הוסף הלוואה' : 'עריכת הלוואה'}</h2>
-            <form onSubmit={submit} style={styles.form}>
-              <input style={styles.input} placeholder="שם ההלוואה (למשל: משכנתא בנק הפועלים)" value={form.name} onChange={set('name')} required />
+        <BottomSheet onClose={() => setSheet(null)}>
+          <h2 style={styles.sheetTitle}>{sheet === 'add' ? 'הוסף הלוואה' : 'עריכת הלוואה'}</h2>
+          <form onSubmit={submit} style={styles.form}>
+            <input style={styles.input} placeholder="שם ההלוואה (למשל: משכנתא בנק הפועלים)" value={form.name} onChange={set('name')} required />
 
-              <select style={styles.select} value={form.loan_type} onChange={set('loan_type')}>
-                {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{TYPE_ICONS[v]} {l}</option>)}
+            <select style={styles.select} value={form.loan_type} onChange={set('loan_type')}>
+              {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{TYPE_ICONS[v]} {l}</option>)}
+            </select>
+
+            {sheet === 'add' && (
+              <>
+                <input style={styles.input} type="number" placeholder="קרן (סכום מקורי)" value={form.principal} onChange={set('principal')} min="0" step="1" required />
+                <input style={styles.input} type="number" placeholder="ריבית שנתית (%)" value={form.interest_rate} onChange={set('interest_rate')} min="0" step="0.01" required />
+                <input style={styles.input} type="number" placeholder="תקופה (חודשים)" value={form.term_months} onChange={set('term_months')} min="1" step="1" required />
+                <div>
+                  <label style={styles.label}>תאריך תחילת הלוואה</label>
+                  <DateInput style={styles.input} value={form.start_date} onChange={set('start_date')} required />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label style={styles.label}>מסלול ריבית</label>
+              <select style={styles.select} value={form.interest_type} onChange={set('interest_type')}>
+                <option value="fixed">קל"צ — קבועה לא צמודה</option>
+                <option value="prime">פריים — משתנה לא צמודה</option>
+                <option value="cpi_linked">צמוד מדד — ריבית משתנה אג"ח</option>
               </select>
+            </div>
+            {form.interest_type === 'cpi_linked' && (
+              <input style={styles.input} type="number" placeholder='מדד מניח שנתי (% — לדוגמה 2.5)' value={form.cpi_rate} onChange={set('cpi_rate')} min="0" step="0.1" />
+            )}
+            <div>
+              <label style={styles.label}>יום בחודש לתשלום (השאר ריק לפי תאריך תחילה)</label>
+              <input style={styles.input} type="number" placeholder="1–31" value={form.payment_day} onChange={set('payment_day')} min="1" max="31" step="1" />
+            </div>
+            <input style={styles.input} type="number" placeholder="תשלום חודשי (השאר ריק לחישוב אוטומטי)" value={form.monthly_payment} onChange={set('monthly_payment')} min="0" step="0.01" />
+            <input style={styles.input} type="number" placeholder="תשלום ראשון (אם שונה — כולל פתיחת תיק, יחסי)" value={form.first_payment} onChange={set('first_payment')} min="0" step="0.01" />
+            <input style={styles.input} placeholder="הערות (אופציונלי)" value={form.notes} onChange={set('notes')} />
 
-              {sheet === 'add' && (
-                <>
-                  <input style={styles.input} type="number" placeholder="קרן (סכום מקורי)" value={form.principal} onChange={set('principal')} min="0" step="1" required />
-                  <input style={styles.input} type="number" placeholder="ריבית שנתית (%)" value={form.interest_rate} onChange={set('interest_rate')} min="0" step="0.01" required />
-                  <input style={styles.input} type="number" placeholder="תקופה (חודשים)" value={form.term_months} onChange={set('term_months')} min="1" step="1" required />
-                  <div>
-                    <label style={styles.label}>תאריך תחילת הלוואה</label>
-                    <DateInput style={styles.input} value={form.start_date} onChange={set('start_date')} required />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label style={styles.label}>מסלול ריבית</label>
-                <select style={styles.select} value={form.interest_type} onChange={set('interest_type')}>
-                  <option value="fixed">קל"צ — קבועה לא צמודה</option>
-                  <option value="prime">פריים — משתנה לא צמודה</option>
-                  <option value="cpi_linked">צמוד מדד — ריבית משתנה אג"ח</option>
-                </select>
-              </div>
-              {form.interest_type === 'cpi_linked' && (
-                <input style={styles.input} type="number" placeholder='מדד מניח שנתי (% — לדוגמה 2.5)' value={form.cpi_rate} onChange={set('cpi_rate')} min="0" step="0.1" />
-              )}
-              <div>
-                <label style={styles.label}>יום בחודש לתשלום (השאר ריק לפי תאריך תחילה)</label>
-                <input style={styles.input} type="number" placeholder="1–31" value={form.payment_day} onChange={set('payment_day')} min="1" max="31" step="1" />
-              </div>
-              <input style={styles.input} type="number" placeholder="תשלום חודשי (השאר ריק לחישוב אוטומטי)" value={form.monthly_payment} onChange={set('monthly_payment')} min="0" step="0.01" />
-              <input style={styles.input} type="number" placeholder="תשלום ראשון (אם שונה — כולל פתיחת תיק, יחסי)" value={form.first_payment} onChange={set('first_payment')} min="0" step="0.01" />
-              <input style={styles.input} placeholder="הערות (אופציונלי)" value={form.notes} onChange={set('notes')} />
-
-              {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-              <button style={styles.submitBtn} type="submit" disabled={saveMut.isPending}>
-                {saveMut.isPending ? '...' : 'שמור'}
-              </button>
-            </form>
-          </div>
-        </div>
+            {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+            <button style={styles.submitBtn} type="submit" disabled={saveMut.isPending}>
+              {saveMut.isPending ? '...' : 'שמור'}
+            </button>
+          </form>
+        </BottomSheet>
       )}
+
+      {/* FAB */}
+      {!scheduleId && <button style={styles.fab} onClick={openAdd}>+</button>}
 
       {/* Delete confirm */}
       {confirmDelete && (
@@ -387,7 +387,7 @@ const styles = {
   header: { background: C.card, borderBottom: `1px solid ${C.line}`, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 },
   backBtn: { background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: C.muted, padding: '0 4px' },
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, fontSize: '1rem', color: C.ink, margin: 0, flex: 1 },
-  addBtn: { padding: '0.35rem 0.85rem', border: `1px solid ${C.line}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', color: C.brass, fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Assistant, sans-serif' },
+  fab: { position: 'fixed', bottom: 72, insetInlineEnd: 24, width: 56, height: 56, borderRadius: '50%', background: C.brass, color: '#fff', border: 'none', fontSize: '1.8rem', cursor: 'pointer', boxShadow: '0 4px 16px rgba(201,162,63,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 300, lineHeight: 1, zIndex: 40 },
   main: { padding: '0.75rem 1rem', maxWidth: 600, margin: '0 auto' },
   totalCard: { background: C.ink, borderRadius: 16, padding: '1rem 1.25rem', marginBottom: 12, textAlign: 'center' },
   totalVal: { fontFamily: 'Heebo, sans-serif', fontWeight: 900, fontSize: '1.8rem', color: '#fff', margin: '4px 0 0', fontVariantNumeric: 'tabular-nums' },
