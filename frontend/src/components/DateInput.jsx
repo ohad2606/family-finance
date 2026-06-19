@@ -48,7 +48,7 @@ export default function DateInput({ value, onChange, style, required, placeholde
   // style goes on the wrapper div (handles flex, width, etc.)
   // input inside is transparent/borderless so the div "is" the input visually
   return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', ...style }}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', ...style, direction: 'ltr' }}>
       <input
         type="text"
         inputMode="numeric"
@@ -60,20 +60,19 @@ export default function DateInput({ value, onChange, style, required, placeholde
         dir="ltr"
         style={{
           flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
-          fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', textAlign: 'inherit',
-          padding: 0, paddingInlineEnd: '1.5rem',
+          fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit', textAlign: 'left',
+          padding: 0, paddingRight: '1.5rem',
         }}
       />
-      {/* hidden native date picker overlaid on the calendar icon */}
       <input
         ref={pickerRef}
         type="date"
         value={value || ''}
         onChange={handlePicker}
         tabIndex={-1}
-        style={{ position: 'absolute', insetInlineEnd: 0, top: 0, bottom: 0, width: '2rem', opacity: 0, cursor: 'pointer' }}
+        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '2rem', opacity: 0, cursor: 'pointer' }}
       />
-      <span style={{ position: 'absolute', insetInlineEnd: '0.35rem', fontSize: '0.9rem', pointerEvents: 'none', lineHeight: 1 }}>📅</span>
+      <span style={{ position: 'absolute', right: '0.35rem', fontSize: '0.9rem', pointerEvents: 'none', lineHeight: 1 }}>📅</span>
     </div>
   )
 }
