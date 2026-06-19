@@ -93,7 +93,7 @@ export default function DashboardPage() {
       </header>
 
       <main style={styles.main}>
-        {/* Quick financial snapshot - checking accounts + credit cards */}
+        {/* 1 — Accounts status */}
         {(() => {
           const fmtBank = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
           const fmtBankDec = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n)
@@ -157,92 +157,21 @@ export default function DashboardPage() {
           )
         })()}
 
-        {/* Net Worth */}
-        <div style={styles.netWorthCard}>
-          <p style={styles.netWorthLabel}>שווי נקי</p>
-          <p style={styles.netWorthValue}>{sumLoading ? '...' : fmt(summary?.net_worth)}</p>
-          <div style={styles.netWorthRow}>
-            <span style={{ color: C.income }}>↑ {fmt(summary?.total_assets)} נכסים</span>
-            <span style={{ color: C.expense }}>↓ {fmt(summary?.total_liabilities)} חובות</span>
-          </div>
-          {nwHistory.length >= 2 && (() => {
-            const first = nwHistory[0].net_worth
-            const last = nwHistory[nwHistory.length - 1].net_worth
-            const delta = last - first
-            const pct = first !== 0 ? Math.round((delta / Math.abs(first)) * 100) : null
-            return (
-              <div style={{ marginTop: 10 }}>
-                <NetWorthChart data={nwHistory} />
-                {pct !== null && (
-                  <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.78rem', color: delta >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                    {delta >= 0 ? '▲' : '▼'} {Math.abs(pct)}% ב-12 חודשים
-                  </p>
-                )}
-              </div>
-            )
-          })()}
-        </div>
-
-        {/* Financial Health */}
-        <HealthCard health={health} />
-
-        {/* Month summary */}
+        {/* 2 — Month income / expense */}
         <div style={styles.row}>
-          <button style={{ ...styles.summaryCard, borderTop: `3px solid ${C.income}`, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.income, borderTopWidth: 3 }} onClick={() => setMonthDetail('income')}>
+          <button style={{ ...styles.summaryCard, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.income, borderTopWidth: 3 }} onClick={() => setMonthDetail('income')}>
             <p style={styles.summaryLabel}>הכנסות {thisMonth}</p>
             <p style={{ ...styles.summaryValue, color: C.income }}>{fmt(summary?.month_income)}</p>
             <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: C.muted }}>לפירוט ←</p>
           </button>
-          <button style={{ ...styles.summaryCard, borderTop: `3px solid ${C.expense}`, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.expense, borderTopWidth: 3 }} onClick={() => setMonthDetail('expense')}>
+          <button style={{ ...styles.summaryCard, textAlign: 'right', cursor: 'pointer', border: `1px solid ${C.line}`, borderTopColor: C.expense, borderTopWidth: 3 }} onClick={() => setMonthDetail('expense')}>
             <p style={styles.summaryLabel}>הוצאות {thisMonth}</p>
             <p style={{ ...styles.summaryValue, color: C.expense }}>{fmt(summary?.month_expense)}</p>
             <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: C.muted }}>לפירוט ←</p>
           </button>
         </div>
 
-        {/* Budget alert */}
-        {overBudget.length > 0 && (
-          <div style={styles.alertBanner} onClick={() => navigate('/budget')}>
-            <span style={{ fontSize: '1.1rem' }}>⚠</span>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontWeight: 700 }}>{overBudget.length} קטגוריות חרגו מהתקציב</span>
-              <span style={{ color: C.expense, fontWeight: 400, fontSize: '0.82rem', marginRight: 6 }}>
-                {overBudget.map(b => b.category_name).join(', ')}
-              </span>
-            </div>
-            <span style={{ color: C.muted }}>›</span>
-          </div>
-        )}
-
-        {/* Upcoming recurring */}
-        {upcoming.length > 0 && (
-          <section style={styles.section}>
-            <div style={styles.sectionHeader}>
-              <h2 style={styles.sectionTitle}>עומד לחיוב — 7 ימים</h2>
-              <button style={styles.addBtn} onClick={() => navigate('/recurring')}>הכל</button>
-            </div>
-            <div style={styles.txList}>
-              {upcoming.map(r => {
-                const daysLeft = Math.ceil((new Date(r.next_date) - new Date()) / 86400000)
-                return (
-                  <div key={r.id} style={styles.txRow}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={styles.txDesc}>{r.description || r.category_name || '—'}</p>
-                      <p style={styles.txMeta}>
-                        {r.next_date} · {daysLeft <= 0 ? 'היום' : daysLeft === 1 ? 'מחר' : `עוד ${daysLeft} ימים`}
-                      </p>
-                    </div>
-                    <p style={{ ...styles.txAmount, color: r.kind === 'income' ? C.income : C.expense }}>
-                      {r.kind === 'income' ? '+' : '-'}{fmt(r.amount)}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Planned transactions — due today or overdue */}
+        {/* 3 — Planned transactions due today / overdue */}
         {plannedDue.length > 0 && (
           <section style={{ background: '#FFF7ED', borderRadius: 18, padding: '1rem', border: '1px solid #FED7AA' }}>
             <div style={styles.sectionHeader}>
@@ -293,7 +222,7 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Planned transactions — upcoming */}
+        {/* 3b — Planned transactions upcoming */}
         {plannedUpcoming.length > 0 && (
           <section style={styles.section}>
             <h2 style={{ ...styles.sectionTitle, margin: '0 0 0.75rem' }}>📅 תנועות מתוכננות</h2>
@@ -310,6 +239,112 @@ export default function DashboardPage() {
                     </div>
                     <p style={{ ...styles.txAmount, color: tx.kind === 'income' ? C.income : C.expense }}>
                       {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 4 — Budget progress */}
+        {budget.filter(b => b.planned > 0).length > 0 && (
+          <div style={{ background: C.card, borderRadius: 18, padding: '1rem 1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: C.muted, fontWeight: 600, letterSpacing: '0.02em' }}>תקציב — {thisMonth}</p>
+              <button style={styles.addBtn} onClick={() => navigate('/budget')}>הכל</button>
+            </div>
+            {budget.filter(b => b.planned > 0).map((b, i, arr) => {
+              const pct = b.planned > 0 ? Math.min((b.actual / b.planned) * 100, 100) : 0
+              const over = b.actual > b.planned
+              return (
+                <div key={b.category_id} style={{ marginBottom: i < arr.length - 1 ? 12 : 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.88rem', color: C.ink, fontWeight: 600 }}>
+                      {b.category_icon} {b.category_name}
+                    </span>
+                    <span style={{ fontFamily: 'Heebo', fontSize: '0.82rem', color: over ? C.expense : C.muted, fontVariantNumeric: 'tabular-nums' }}>
+                      {fmt(b.actual)} / {fmt(b.planned)}
+                    </span>
+                  </div>
+                  <div style={{ background: C.line, borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                    <div style={{ background: over ? C.expense : C.income, height: 6, width: `${pct}%`, transition: 'width 0.4s ease', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                    <span style={{ fontSize: '0.68rem', color: C.muted }}>{Math.round(pct)}% נוצל</span>
+                    <span style={{ fontSize: '0.68rem', color: over ? C.expense : C.muted }}>
+                      {over ? `חריגה ${fmt(b.actual - b.planned)}` : `נותר ${fmt(b.planned - b.actual)}`}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* 5 — Net Worth */}
+        <div style={styles.netWorthCard}>
+          <p style={styles.netWorthLabel}>שווי נקי</p>
+          <p style={styles.netWorthValue}>{sumLoading ? '...' : fmt(summary?.net_worth)}</p>
+          <div style={styles.netWorthRow}>
+            <span style={{ color: C.income }}>↑ {fmt(summary?.total_assets)} נכסים</span>
+            <span style={{ color: C.expense }}>↓ {fmt(summary?.total_liabilities)} חובות</span>
+          </div>
+          {nwHistory.length >= 2 && (() => {
+            const first = nwHistory[0].net_worth
+            const last = nwHistory[nwHistory.length - 1].net_worth
+            const delta = last - first
+            const pct = first !== 0 ? Math.round((delta / Math.abs(first)) * 100) : null
+            return (
+              <div style={{ marginTop: 10 }}>
+                <NetWorthChart data={nwHistory} />
+                {pct !== null && (
+                  <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.78rem', color: delta >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                    {delta >= 0 ? '▲' : '▼'} {Math.abs(pct)}% ב-12 חודשים
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* Financial Health */}
+        <HealthCard health={health} />
+
+        {/* Budget alert */}
+        {overBudget.length > 0 && (
+          <div style={styles.alertBanner} onClick={() => navigate('/budget')}>
+            <span style={{ fontSize: '1.1rem' }}>⚠</span>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontWeight: 700 }}>{overBudget.length} קטגוריות חרגו מהתקציב</span>
+              <span style={{ color: C.expense, fontWeight: 400, fontSize: '0.82rem', marginRight: 6 }}>
+                {overBudget.map(b => b.category_name).join(', ')}
+              </span>
+            </div>
+            <span style={{ color: C.muted }}>›</span>
+          </div>
+        )}
+
+        {/* Upcoming recurring */}
+        {upcoming.length > 0 && (
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>עומד לחיוב — 7 ימים</h2>
+              <button style={styles.addBtn} onClick={() => navigate('/recurring')}>הכל</button>
+            </div>
+            <div style={styles.txList}>
+              {upcoming.map(r => {
+                const daysLeft = Math.ceil((new Date(r.next_date) - new Date()) / 86400000)
+                return (
+                  <div key={r.id} style={styles.txRow}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={styles.txDesc}>{r.description || r.category_name || '—'}</p>
+                      <p style={styles.txMeta}>
+                        {r.next_date} · {daysLeft <= 0 ? 'היום' : daysLeft === 1 ? 'מחר' : `עוד ${daysLeft} ימים`}
+                      </p>
+                    </div>
+                    <p style={{ ...styles.txAmount, color: r.kind === 'income' ? C.income : C.expense }}>
+                      {r.kind === 'income' ? '+' : '-'}{fmt(r.amount)}
                     </p>
                   </div>
                 )
