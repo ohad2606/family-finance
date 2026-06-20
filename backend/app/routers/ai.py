@@ -36,7 +36,7 @@ def _format_month(ym: str) -> str:
 
 
 async def _collect(household_id: int, db: AsyncSession):
-    since = date.today() - timedelta(days=92)
+    since = date.today() - timedelta(days=365)  # ~12 months for richer AI analysis
     rows = await db.execute(
         select(Transaction, Category.name.label("cat_name"))
         .outerjoin(Category, Category.id == Transaction.category_id)
