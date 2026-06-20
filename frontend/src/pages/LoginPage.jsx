@@ -19,10 +19,18 @@ const OAUTH_ERRORS = {
   no_household: 'שגיאה פנימית – אנא פנה לתמיכה',
 }
 
+function pwChecks(pw) {
+  return {
+    length: pw.length >= 10,
+    digit: /\d/.test(pw),
+    upper: /[A-Z]/.test(pw),
+  }
+}
+
 export default function LoginPage() {
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('mode') === 'register' ? 'register' : 'login')
-  const [form, setForm] = useState({ email: '', password: '', display_name: '', household_name: '' })
+  const [form, setForm] = useState({ email: '', password: '', confirm_password: '', display_name: '', household_name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
@@ -35,6 +43,9 @@ export default function LoginPage() {
   }, [])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const checks = pwChecks(form.password)
+  const pwValid = checks.length && checks.digit && checks.upper
 
   const loginWithPasskey = async () => {
     setError('')
@@ -60,6 +71,10 @@ export default function LoginPage() {
   const submit = async (e) => {
     e.preventDefault()
     setError('')
+    if (mode === 'register') {
+      if (!pwValid) { setError('הסיסמה אינה עומדת בדרישות'); return }
+      if (form.password !== form.confirm_password) { setError('הסיסמאות אינן תואמות'); return }
+    }
     setLoading(true)
     try {
       if (mode === 'login') {
@@ -123,6 +138,16 @@ export default function LoginPage() {
           )}
           <input style={styles.input} type="email" placeholder="אימייל" value={form.email} onChange={set('email')} required />
           <input style={styles.input} type="password" placeholder="סיסמה" value={form.password} onChange={set('password')} required />
+          {mode === 'register' && form.password.length > 0 && (
+            <div style={styles.pwChecks}>
+              <span style={checks.length ? styles.checkOk : styles.checkNo}>{checks.length ? '✓' : '✗'} לפחות 10 תווים</span>
+              <span style={checks.digit  ? styles.checkOk : styles.checkNo}>{checks.digit  ? '✓' : '✗'} ספרה אחת לפחות</span>
+              <span style={checks.upper  ? styles.checkOk : styles.checkNo}>{checks.upper  ? '✓' : '���'} אות גדולה באנגלית</span>
+            </div>
+          )}
+          {mode === 'register' && (
+            <input style={styles.input} type="password" placeholder="אימות סיסמה" value={form.confirm_password} onChange={set('confirm_password')} required />
+          )}
           {error && <p style={styles.error}>{error}</p>}
           <button style={styles.btn} type="submit" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'כניסה' : 'הרשמה'}
@@ -180,4 +205,7 @@ const styles = {
   error: { color: C.expense, fontSize: '0.9rem', margin: 0, textAlign: 'center' },
   backLink: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.85rem', padding: '0 0 0.5rem', display: 'block' },
   forgotLink: { background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'Assistant, sans-serif', fontSize: '0.85rem', textAlign: 'center', padding: '4px 0' },
+  pwChecks: { display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 12px', background: C.paper, borderRadius: 10, fontSize: '0.82rem' },
+  checkOk: { color: C.income },
+  checkNo: { color: C.muted },
 }

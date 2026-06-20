@@ -9,12 +9,12 @@ from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-_PW_RE = re.compile(r'^(?=.*[A-Za-zא-ת])(?=.*[\d\W]).{10,}$')
+_PW_RE = re.compile(r'^(?=.*[A-Z])(?=.*\d).{10,}$')
 
 
 def validate_password_strength(password: str) -> str:
     if not _PW_RE.match(password):
-        raise ValueError("הסיסמה חייבת להכיל לפחות 10 תווים, אות אחת וספרה/תו מיוחד אחד")
+        raise ValueError("הסיסמה חייבת להכיל לפחות 10 תווים, ספרה אחת ואות גדולה אחת באנגלית")
     return password
 
 
