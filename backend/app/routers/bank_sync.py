@@ -129,7 +129,6 @@ async def bank_sync(
             exists = await db.execute(
                 select(Transaction.id).where(
                     Transaction.external_ref == ext_ref,
-                    Transaction.household_id == payload.household_id,
                 )
             )
             if exists.scalar_one_or_none() is not None:
