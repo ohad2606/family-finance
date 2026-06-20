@@ -1,6 +1,8 @@
+import logging
 import httpx
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 RESEND_URL = "https://api.resend.com/emails"
 
 
@@ -21,7 +23,7 @@ async def send_reset_email(to_email: str, reset_link: str) -> None:
     </div>
     """
     async with httpx.AsyncClient(timeout=10) as client:
-        await client.post(
+        resp = await client.post(
             RESEND_URL,
             headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
             json={
@@ -31,3 +33,8 @@ async def send_reset_email(to_email: str, reset_link: str) -> None:
                 "html": html,
             },
         )
+    if resp.status_code >= 400:
+        logger.error("Resend failed for %s: %s %s", to_email, resp.status_code, resp.text)
+        resp.raise_for_status()
+    else:
+        logger.info("Reset email sent to %s (id=%s)", to_email, resp.json().get("id"))

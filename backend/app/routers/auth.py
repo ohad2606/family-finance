@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+
+logger = logging.getLogger(__name__)
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -262,9 +265,14 @@ async def forgot_password(request: Request, body: dict, db: AsyncSession = Depen
     result = await db.execute(select(User).where(User.email == email, User.is_active == True))
     user = result.scalar_one_or_none()
     if user and user.password_hash:
-        token = create_reset_token(user.id)
-        link = f"https://family-finance.net/reset-password?token={token}"
-        await send_reset_email(email, link)
+        try:
+            token = create_reset_token(user.id)
+            link = f"https://family-finance.net/reset-password?token={token}"
+            await send_reset_email(email, link)
+        except Exception as exc:
+            logger.error("Failed to send reset email to %s: %s", email, exc)
+    elif user and not user.password_hash:
+        logger.info("Reset requested for Google-only account: %s", email)
     return {"ok": True}
 
 
