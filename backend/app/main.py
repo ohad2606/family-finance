@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync, webauthn
+from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync, webauthn, ai
 from app.scheduler import start_scheduler, scheduler
 
 
@@ -50,6 +50,7 @@ app.include_router(savings.router, prefix="/api")
 app.include_router(household.router, prefix="/api")
 app.include_router(bank_sync.router, prefix="/api")
 app.include_router(webauthn.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
 
 
 @app.get("/api/health")
