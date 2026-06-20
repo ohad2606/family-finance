@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -86,6 +86,17 @@ async def upsert_budget(
     _, household = ctx
     month_start = _first_of_month(body.month)
 
+    # Validate category belongs to this household
+    cat_result = await db.execute(
+        select(Category).where(
+            Category.id == body.category_id,
+            Category.household_id == household.id,
+        )
+    )
+    cat = cat_result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="קטגוריה לא נמצאה")
+
     result = await db.execute(
         select(Budget).where(
             Budget.household_id == household.id,
@@ -107,11 +118,6 @@ async def upsert_budget(
         db.add(budget)
 
     await db.commit()
-    await db.refresh(budget)
-
-    # Load category for response
-    cat_result = await db.execute(select(Category).where(Category.id == body.category_id))
-    cat = cat_result.scalar_one()
 
     month_end = month_start.replace(month=month_start.month % 12 + 1, day=1) if month_start.month < 12 \
         else month_start.replace(year=month_start.year + 1, month=1, day=1)

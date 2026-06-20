@@ -204,9 +204,10 @@ async def logout(
         try:
             payload = decode_token(access_token)
             user_id = int(payload.get("sub", 0))
+            token_version = payload.get("tv", 1)
             result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
             user = result.scalar_one_or_none()
-            if user:
+            if user and user.token_version == token_version:
                 user.token_version = user.token_version + 1
                 await db.commit()
         except Exception:

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.database import get_db
-from app.deps import get_current_household
+from app.deps import get_current_household, verify_csrf
 from app.models.finance import Account, BankSyncCommand, BankSyncLog, Transaction
 
 router = APIRouter(prefix="/bank-sync", tags=["bank-sync"])
@@ -90,7 +90,7 @@ async def bank_sync(
         raise HTTPException(status_code=400, detail=f"Unknown source: {payload.source}")
 
     allowed = settings.BANK_SYNC_ALLOWED_HOUSEHOLD_IDS
-    if allowed and payload.household_id not in allowed:
+    if not allowed or payload.household_id not in allowed:
         raise HTTPException(status_code=403, detail="Household not authorized for this API key")
 
     stats = {"accounts_found": 0, "txns_created": 0, "txns_skipped": 0}
@@ -127,7 +127,10 @@ async def bank_sync(
         for txn_in in acc_in.txns:
             ext_ref = _external_ref(payload.source, acc_in.account_number, txn_in)
             exists = await db.execute(
-                select(Transaction.id).where(Transaction.external_ref == ext_ref)
+                select(Transaction.id).where(
+                    Transaction.external_ref == ext_ref,
+                    Transaction.household_id == payload.household_id,
+                )
             )
             if exists.scalar_one_or_none() is not None:
                 stats["txns_skipped"] += 1
@@ -162,7 +165,7 @@ async def bank_sync(
 
 # ── Command queue endpoints ────────────────────────────────────────────────────
 
-@router.post("/trigger", status_code=201)
+@router.post("/trigger", status_code=201, dependencies=[Depends(verify_csrf)])
 async def trigger_sync(
     ctx=Depends(get_current_household),
     db: AsyncSession = Depends(get_db),

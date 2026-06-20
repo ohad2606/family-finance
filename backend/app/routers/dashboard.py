@@ -199,7 +199,7 @@ async def annual_report(
     cat_ids = [r.category_id for r in cat_data if r.category_id]
     cats = {}
     if cat_ids:
-        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids)))
+        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids), Category.household_id == household.id))
         cats = {c.id: c for c in cat_result.scalars().all()}
 
     top_expenses = [
@@ -476,7 +476,7 @@ async def spending_by_category(
     cat_ids = [r.category_id for r in rows if r.category_id]
     cats = {}
     if cat_ids:
-        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids)))
+        cat_result = await db.execute(select(Category).where(Category.id.in_(cat_ids), Category.household_id == household.id))
         cats = {c.id: c for c in cat_result.scalars().all()}
 
     return [
