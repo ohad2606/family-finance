@@ -222,9 +222,11 @@ function AppShell() {
   )
 }
 
+const isMobileDevice = () => /iphone|ipad|ipod|android/i.test(navigator.userAgent) || !!window.navigator.standalone
+
 function LockGate({ children }) {
   const { user } = useAuth()
-  const { isLocked, unlock } = useAppLock(!!user)
+  const { isLocked, unlock } = useAppLock(!!user && isMobileDevice())
   if (user && isLocked) return <LockScreen onUnlock={unlock} />
   return children
 }
