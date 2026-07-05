@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getDashboardSummary, getAccounts, getTransactions, getCashflow, getBudget, getUpcomingRecurring, getNetWorthHistory, getFinancialHealth, getSpending, getSavings, getLoans, getBankSyncStatus, triggerBankSync, getPlannedTransactions, confirmPlannedTransaction, deleteTransaction } from '../api/finance'
 import AddTransactionSheet from '../components/AddTransactionSheet'
+import EditAccountSheet from '../components/EditAccountSheet'
 import BottomSheet from '../components/BottomSheet'
 import CashflowChart from '../components/CashflowChart'
 import NetWorthChart from '../components/NetWorthChart'
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [showTx, setShowTx] = useState(false)
   const [monthDetail, setMonthDetail] = useState(null)  // null | 'income' | 'expense'
+  const [editingAccount, setEditingAccount] = useState(null)
 
   const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
 
@@ -66,6 +68,12 @@ export default function DashboardPage() {
     qc.invalidateQueries({ queryKey: ['transactions'] })
     qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
     qc.invalidateQueries({ queryKey: ['accounts'] })
+    qc.invalidateQueries({ queryKey: ['cashflow'] })
+    qc.invalidateQueries({ queryKey: ['spending'] })
+    qc.invalidateQueries({ queryKey: ['health'] })
+    qc.invalidateQueries({ queryKey: ['networth-history'] })
+    qc.invalidateQueries({ queryKey: ['budget'] })
+    qc.invalidateQueries({ queryKey: ['upcoming-recurring'] })
   }
 
   const confirmMutation = useMutation({
@@ -129,27 +137,61 @@ export default function DashboardPage() {
 
               {creditAccs.map(a => {
                 const used = a.credit_used ?? 0
-                const remaining = a.credit_limit - used
-                const usedPct = Math.min(100, (used / a.credit_limit) * 100)
-                const danger = usedPct > 80
+                const limit = a.credit_limit ?? 0
+                const overLimit = limit > 0 && used > limit
+                const overage = overLimit ? used - limit : 0
+                const usedPct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0
+                const danger = usedPct > 80 || overLimit
+                const billingDay = a.billing_day ?? 1
+                const today = new Date()
+                const nextBillingDate = (() => {
+                  const d = new Date(today)
+                  if (today.getDate() < billingDay) {
+                    d.setDate(billingDay)
+                  } else {
+                    d.setMonth(d.getMonth() + 1)
+                    d.setDate(billingDay)
+                  }
+                  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
+                })()
+                const payAmount = a.revolving_amount != null ? a.revolving_amount : used
                 return (
                   <div key={a.id} style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <div>
+                      <div style={{ cursor: 'pointer' }} onClick={() => setEditingAccount(a)}>
                         <span style={{ fontSize: '0.78rem', color: C.muted }}>כרטיס · </span>
                         <span style={{ fontSize: '0.9rem', color: C.ink, fontWeight: 600 }}>{a.nickname || a.name}</span>
+                        <span style={{ fontSize: '0.68rem', color: C.brass, marginRight: 5 }}>✎</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.3rem', color: remaining >= 0 ? C.income : C.expense, fontVariantNumeric: 'tabular-nums' }}>{fmtBank(remaining)}</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        {overLimit && (
+                          <span style={{ fontSize: '0.72rem', background: C.expense, color: '#fff', borderRadius: 6, padding: '1px 6px', fontWeight: 700 }}>חריגה</span>
+                        )}
+                        <span style={{ fontFamily: 'Heebo', fontWeight: 700, fontSize: '1.3rem', color: danger ? C.expense : C.ink, fontVariantNumeric: 'tabular-nums' }}>{fmtBank(used)}</span>
                       </div>
                     </div>
                     <div style={{ background: C.line, borderRadius: 4, height: 6, overflow: 'hidden' }}>
                       <div style={{ background: danger ? C.expense : C.brass, height: 6, width: `${usedPct}%`, transition: 'width 0.4s ease', borderRadius: 4 }} />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                      <span style={{ fontSize: '0.7rem', color: C.muted }}>שומש {fmtBank(used)} מתוך {fmtBank(a.credit_limit)} החודש</span>
+                      {limit > 0 ? (
+                        overLimit
+                          ? <span style={{ fontSize: '0.7rem', color: C.expense }}>חריגה של {fmtBank(overage)} מעל המסגרת ({fmtBank(limit)})</span>
+                          : <span style={{ fontSize: '0.7rem', color: C.muted }}>נותרו {fmtBank(limit - used)} מתוך מסגרת {fmtBank(limit)}</span>
+                      ) : (
+                        <span style={{ fontSize: '0.7rem', color: C.muted }}>שימוש {fmtBank(used)}</span>
+                      )}
                       <span style={{ fontSize: '0.7rem', color: danger ? C.expense : C.muted }}>{Math.round(usedPct)}%</span>
                     </div>
+                    {used > 0 && (
+                      <div style={{ marginTop: 4, fontSize: '0.7rem', color: C.muted }}>
+                        יורד ב-{nextBillingDate}:{' '}
+                        <span style={{ color: C.ink, fontWeight: 600 }}>
+                          {fmtBank(payAmount)}
+                          {a.revolving_amount != null ? ' (מתגלגל)' : ' (סכום מלא)'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -480,7 +522,12 @@ export default function DashboardPage() {
                 disabled={triggering || bankSyncPending}
                 onClick={async () => {
                   setTriggering(true)
-                  try { await triggerBankSync() } finally { setTriggering(false) }
+                  try {
+                    await triggerBankSync()
+                    await qc.invalidateQueries({ queryKey: ['bank-sync-status'] })
+                  } finally {
+                    setTriggering(false)
+                  }
                 }}
               >
                 {bankSyncPending ? '⟳ מסנכרן...' : triggering ? 'שולח...' : '↻ סנכרן עכשיו'}
@@ -554,6 +601,7 @@ export default function DashboardPage() {
       <button style={styles.fab} onClick={() => setShowTx(true)}>+</button>
 
       {showTx && <AddTransactionSheet onClose={() => setShowTx(false)} />}
+      {editingAccount && <EditAccountSheet account={editingAccount} onClose={() => setEditingAccount(null)} />}
 
       {/* Month detail sheet */}
       {monthDetail && (

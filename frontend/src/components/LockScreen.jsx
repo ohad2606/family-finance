@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { startAuthentication } from '@simplewebauthn/browser'
@@ -16,6 +16,10 @@ export default function LockScreen({ onUnlock }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential
+
+  useEffect(() => {
+    if (supportsPasskey) handleUnlock()
+  }, [])
 
   const handleUnlock = async () => {
     setError('')

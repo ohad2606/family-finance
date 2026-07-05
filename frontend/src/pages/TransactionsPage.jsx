@@ -60,6 +60,12 @@ export default function TransactionsPage({ onBack }) {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({ queryKey: ['cashflow'] })
+      qc.invalidateQueries({ queryKey: ['spending'] })
+      qc.invalidateQueries({ queryKey: ['health'] })
+      qc.invalidateQueries({ queryKey: ['networth-history'] })
+      qc.invalidateQueries({ queryKey: ['budget'] })
+      qc.invalidateQueries({ queryKey: ['upcoming-recurring'] })
       setConfirmDelete(null)
     },
   })

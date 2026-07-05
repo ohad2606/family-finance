@@ -96,9 +96,12 @@ export default function AddAccountSheet({ onClose }) {
         </div>
 
         {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-        <button style={styles.btn} type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? '...' : 'הוסף חשבון'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={styles.btnCancel} type="button" onClick={onClose}>ביטול</button>
+          <button style={styles.btn} type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? '...' : 'הוסף חשבון'}
+          </button>
+        </div>
       </form>
     </BottomSheet>
   )
@@ -111,7 +114,8 @@ const styles = {
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, color: C.ink, margin: '0 0 1rem', fontSize: '1.1rem' },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
   input: { padding: '0.7rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, textAlign: 'right', boxSizing: 'border-box', width: '100%' },
-  btn: { padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  btn: { flex: 1, padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  btnCancel: { flexShrink: 0, padding: '0.8rem 1.2rem', background: 'transparent', color: '#6B746E', border: '1px solid #D5D8CF', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
   suggestions: { position: 'absolute', top: '100%', right: 0, left: 0, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, zIndex: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', overflow: 'hidden', marginTop: 2 },
   suggestion: { display: 'block', width: '100%', padding: '0.65rem 1rem', background: 'none', border: 'none', textAlign: 'right', fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, cursor: 'pointer', borderBottom: `1px solid ${C.line}` },
 }

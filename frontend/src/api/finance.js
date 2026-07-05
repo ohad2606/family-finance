@@ -58,3 +58,5 @@ export const getLoanSchedule = (id) => api.get(`/loans/${id}/schedule`).then(r =
 
 export const getBankSyncStatus = () => api.get('/bank-sync/status').then(r => r.data)
 export const triggerBankSync = () => api.post('/bank-sync/trigger').then(r => r.data)
+
+export const getAiInsights = () => api.get('/ai/insights').then(r => r.data)

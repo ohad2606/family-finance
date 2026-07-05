@@ -37,6 +37,8 @@ export default function EditAccountSheet({ account, onClose }) {
     nickname: account.nickname || '',
     institution: account.institution || '',
     credit_limit: account.credit_limit != null ? String(account.credit_limit) : '',
+    billing_day: account.billing_day != null ? String(account.billing_day) : '',
+    revolving_amount: account.revolving_amount != null ? String(account.revolving_amount) : '',
     show_on_dashboard: account.show_on_dashboard ?? true,
     include_in_totals: account.include_in_totals ?? true,
   })
@@ -60,6 +62,8 @@ export default function EditAccountSheet({ account, onClose }) {
       nickname: form.nickname.trim() || null,
       institution: form.institution.trim() || null,
       credit_limit: form.credit_limit !== '' ? parseFloat(form.credit_limit) : null,
+      billing_day: form.billing_day !== '' ? parseInt(form.billing_day) : null,
+      revolving_amount: form.revolving_amount !== '' ? parseFloat(form.revolving_amount) : null,
       show_on_dashboard: form.show_on_dashboard,
       include_in_totals: form.include_in_totals,
     })
@@ -85,14 +89,46 @@ export default function EditAccountSheet({ account, onClose }) {
           onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} />
 
         {account.type === 'credit' && (
-          <div>
-            <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: C.muted }}>מסגרת אשראי כוללת</p>
-            <input style={styles.input} type="number" inputMode="decimal"
-              placeholder="לדוגמה: 5000"
-              value={form.credit_limit}
-              onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))}
-              min="0" step="1" />
-          </div>
+          <>
+            <div>
+              <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: C.muted }}>מסגרת אשראי כוללת</p>
+              <input style={styles.input} type="number" inputMode="decimal"
+                placeholder="לדוגמה: 5000"
+                value={form.credit_limit}
+                onChange={e => setForm(f => ({ ...f, credit_limit: e.target.value }))}
+                min="0" step="1" />
+            </div>
+            <div>
+              <p style={{ margin: '0 0 4px', fontSize: '0.8rem', color: C.muted }}>יום חיוב חודשי</p>
+              <input style={styles.input} type="number" inputMode="numeric"
+                placeholder="1–28 (ברירת מחדל: 1)"
+                value={form.billing_day}
+                onChange={e => setForm(f => ({ ...f, billing_day: e.target.value }))}
+                min="1" max="28" step="1" />
+              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: C.muted }}>
+                {form.billing_day
+                  ? `השימוש מחושב מה-${form.billing_day} לכל חודש`
+                  : account.billing_day
+                    ? `מוגדר כעת: ${account.billing_day} — השאר ריק כדי לשמר`
+                    : 'ברירת מחדל: 1 לחודש'}
+              </p>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 4px', fontSize: '0.8rem', color: C.muted }}>אשראי מתגלגל — סכום שירד בחיוב הקרוב</p>
+              <input style={styles.input} type="number" inputMode="decimal"
+                placeholder="ריק = חיוב מלא"
+                value={form.revolving_amount}
+                onChange={e => setForm(f => ({ ...f, revolving_amount: e.target.value }))}
+                min="0" step="1" />
+              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: C.muted }}>
+                {form.revolving_amount
+                  ? `יורד ₪${Number(form.revolving_amount).toLocaleString('he-IL')} בחיוב הקרוב`
+                  : account.revolving_amount != null
+                    ? `מוגדר כעת: ₪${account.revolving_amount.toLocaleString('he-IL')} — השאר ריק לשמר`
+                    : 'ברירת מחדל: הסכום המלא'}
+              </p>
+            </div>
+          </>
         )}
 
         <div style={{ background: C.paper, borderRadius: 14, padding: '0 0.75rem', marginTop: 4 }}>
@@ -113,9 +149,12 @@ export default function EditAccountSheet({ account, onClose }) {
 
         {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
 
-        <button style={styles.btn} type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'שומר...' : 'שמור שינויים'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={styles.btnCancel} type="button" onClick={onClose}>ביטול</button>
+          <button style={styles.btn} type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? 'שומר...' : 'שמור שינויים'}
+          </button>
+        </div>
       </form>
     </BottomSheet>
   )
@@ -128,5 +167,6 @@ const styles = {
   title: { fontFamily: 'Heebo, sans-serif', fontWeight: 700, color: C.ink, margin: '0 0 1.25rem', fontSize: '1.15rem' },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
   input: { padding: '0.7rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, textAlign: 'right', boxSizing: 'border-box', width: '100%' },
-  btn: { padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  btn: { flex: 1, padding: '0.8rem', background: C.brass, color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  btnCancel: { flex: '0 0 auto', padding: '0.8rem 1.2rem', background: 'transparent', color: C.muted, border: `1px solid ${C.line}`, borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
 }

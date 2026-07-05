@@ -13,6 +13,8 @@ class AccountCreate(BaseModel):
     currency: str = "ILS"
     nickname: Optional[str] = None
     credit_limit: Optional[float] = None
+    billing_day: Optional[int] = None
+    revolving_amount: Optional[float] = None
 
 
 class AccountUpdate(BaseModel):
@@ -22,6 +24,8 @@ class AccountUpdate(BaseModel):
     is_active: Optional[bool] = None
     nickname: Optional[str] = None
     credit_limit: Optional[float] = None
+    billing_day: Optional[int] = None
+    revolving_amount: Optional[float] = None
     show_on_dashboard: Optional[bool] = None
     include_in_totals: Optional[bool] = None
 
@@ -39,6 +43,8 @@ class AccountOut(BaseModel):
     bank_balance_at: Optional[str] = None
     nickname: Optional[str] = None
     credit_limit: Optional[float] = None
+    billing_day: Optional[int] = None
+    revolving_amount: Optional[float] = None
     show_on_dashboard: bool = True
     include_in_totals: bool = True
     credit_used: Optional[float] = None

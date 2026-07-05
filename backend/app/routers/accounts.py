@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, case
@@ -12,13 +12,23 @@ from app.schemas.finance import AccountCreate, AccountOut, AccountUpdate
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 
+def _billing_cycle_start(billing_day: int | None) -> date:
+    bd = max(1, min(billing_day or 1, 28))
+    today = date.today()
+    if today.day >= bd:
+        return today.replace(day=bd)
+    first_of_month = today.replace(day=1)
+    last_month_end = first_of_month - timedelta(days=1)
+    return last_month_end.replace(day=min(bd, last_month_end.day))
+
+
 async def _current_month_credit_used(db: AsyncSession, account: Account) -> float | None:
     if account.type != 'credit':
         return None
-    month_start = date.today().replace(day=1)
+    cycle_start = _billing_cycle_start(account.billing_day)
     result = await db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0))
-        .where(Transaction.account_id == account.id, Transaction.kind == 'expense', Transaction.transaction_date >= month_start)
+        .where(Transaction.account_id == account.id, Transaction.kind == 'expense', Transaction.transaction_date >= cycle_start)
     )
     return float(result.scalar())
 
@@ -60,6 +70,8 @@ async def list_accounts(ctx=Depends(get_current_household), db: AsyncSession = D
             bank_balance_at=acc.bank_balance_at.isoformat() if acc.bank_balance_at else None,
             nickname=acc.nickname,
             credit_limit=float(acc.credit_limit) if acc.credit_limit is not None else None,
+            billing_day=acc.billing_day,
+            revolving_amount=float(acc.revolving_amount) if acc.revolving_amount is not None else None,
             show_on_dashboard=acc.show_on_dashboard,
             include_in_totals=acc.include_in_totals,
             credit_used=credit_used,
@@ -98,6 +110,8 @@ async def update_account(account_id: int, body: AccountUpdate, ctx=Depends(get_c
         bank_balance_at=acc.bank_balance_at.isoformat() if acc.bank_balance_at else None,
         nickname=acc.nickname,
         credit_limit=float(acc.credit_limit) if acc.credit_limit is not None else None,
+        billing_day=acc.billing_day,
+        revolving_amount=float(acc.revolving_amount) if acc.revolving_amount is not None else None,
         show_on_dashboard=acc.show_on_dashboard,
         include_in_totals=acc.include_in_totals,
         credit_used=credit_used,

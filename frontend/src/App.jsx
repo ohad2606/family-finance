@@ -40,6 +40,7 @@ import JoinPage from './pages/JoinPage'
 import ProfilePage from './pages/ProfilePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import AiInsightsPage from './pages/AiInsightsPage'
 
 const queryClient = new QueryClient()
 
@@ -63,7 +64,7 @@ function BottomNav() {
   const tabs = [
     { path: '/', label: 'בית', icon: '⌂' },
     { path: '/transactions', label: 'תנועות', icon: '↕' },
-    { path: '/loans', label: 'הלוואות', icon: '🏦' },
+    { path: '/budget', label: 'תקציב', icon: '◎' },
     { path: '/savings', label: 'חיסכון', icon: '🎯' },
     { path: '/more', label: 'עוד', icon: '⋯' },
   ]
@@ -85,8 +86,9 @@ function MorePage() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const items = [
-    { icon: '◎', label: 'תקציב', path: '/budget' },
+    { icon: '🏦', label: 'הלוואות', path: '/loans' },
     { icon: '↺', label: 'תשלומים חוזרים', path: '/recurring' },
+    { icon: '✦', label: 'תובנות AI', path: '/ai' },
     { icon: '◑', label: 'ניתוח', path: '/analytics' },
     { icon: '⚙', label: 'הגדרות', path: '/settings' },
     { icon: '⬆', label: 'ייבוא CSV', path: '/import' },
@@ -210,6 +212,7 @@ function AppShell() {
         <Route path="/forgot-password" element={<RequireGuest><ForgotPasswordPage /></RequireGuest>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<RequireAuth><ProfilePage onBack={() => navigate('/more')} /></RequireAuth>} />
+        <Route path="/ai" element={<RequireAuth><AiInsightsPage onBack={() => navigate('/more')} /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>

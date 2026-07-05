@@ -33,6 +33,12 @@ export default function AddTransactionSheet({ onClose }) {
       qc.invalidateQueries({ queryKey: ['planned-transactions'] })
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({ queryKey: ['cashflow'] })
+      qc.invalidateQueries({ queryKey: ['spending'] })
+      qc.invalidateQueries({ queryKey: ['health'] })
+      qc.invalidateQueries({ queryKey: ['networth-history'] })
+      qc.invalidateQueries({ queryKey: ['budget'] })
+      qc.invalidateQueries({ queryKey: ['upcoming-recurring'] })
       onClose()
     },
     onError: (e) => setError(e.response?.data?.detail || 'שגיאה'),
@@ -109,10 +115,13 @@ export default function AddTransactionSheet({ onClose }) {
 
           {error && <p style={{ color: C.expense, fontSize: '0.85rem', margin: 0 }}>{error}</p>}
 
-          <button style={{ ...styles.submitBtn, background: accentColor }}
-            type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? '...' : form.is_planned ? 'שמור כמתוכנן' : 'שמור'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={styles.cancelBtn} type="button" onClick={onClose}>ביטול</button>
+            <button style={{ ...styles.submitBtn, background: accentColor, flex: 1 }}
+              type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? '...' : form.is_planned ? 'שמור כמתוכנן' : 'שמור'}
+            </button>
+          </div>
         </form>
     </BottomSheet>
   )
@@ -130,4 +139,5 @@ const styles = {
   select: { padding: '0.7rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, textAlign: 'right' },
   input: { padding: '0.7rem 1rem', border: `1px solid ${C.line}`, borderRadius: 12, background: C.paper, fontFamily: 'Assistant, sans-serif', fontSize: '0.95rem', color: C.ink, textAlign: 'right', width: '100%', boxSizing: 'border-box' },
   submitBtn: { padding: '0.8rem', color: '#fff', border: 'none', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
+  cancelBtn: { flexShrink: 0, padding: '0.8rem 1.2rem', background: 'transparent', color: '#6B746E', border: '1px solid #D5D8CF', borderRadius: 14, fontFamily: 'Assistant, sans-serif', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', marginTop: 4 },
 }
