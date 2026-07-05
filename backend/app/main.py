@@ -11,12 +11,13 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.routers import auth, accounts, categories, transactions, dashboard, oauth, budgets, recurring, loans, savings, household, bank_sync, webauthn, ai
-from app.scheduler import start_scheduler, scheduler
+from app.scheduler import start_scheduler, scheduler, generate_occurrences
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     start_scheduler()
+    await generate_occurrences()
     yield
     scheduler.shutdown()
 

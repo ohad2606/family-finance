@@ -13,6 +13,7 @@ from app.database import get_db
 from app.deps import get_current_household, verify_csrf
 from app.models.finance import Account, Category, Transaction
 from app.models.audit import AuditLog
+from app.services.matching import run_matching
 from app.schemas.finance import TransactionCreate, TransactionOut, TransactionUpdate
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -254,4 +255,5 @@ async def bulk_import_transactions(
         detail=str(len(body.rows)),
     ))
     await db.commit()
+    await run_matching(db, household.id)
     return {"imported": len(body.rows)}

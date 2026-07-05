@@ -1,12 +1,14 @@
+import calendar
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func, case, extract, or_
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_household
-from app.models.finance import Account, Category, Transaction, Budget, Loan
-from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport, NetWorthPoint, FinancialHealth, HealthMetric
+from app.models.finance import Account, Category, ExpectedOccurrence, RecurringRule, Transaction, Budget, Loan
+from app.schemas.finance import DashboardSummary, CashflowMonth, CategorySpend, AnnualReport, NetWorthPoint, FinancialHealth, HealthMetric, LedgerRow, LedgerSummary, MonthLedger
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -489,3 +491,296 @@ async def spending_by_category(
         )
         for r in rows
     ]
+
+
+def _loan_monthly_payment(loan: Loan) -> float:
+    if loan.monthly_payment:
+        return float(loan.monthly_payment)
+    r = float(loan.interest_rate) / 100 / 12
+    n = int(loan.term_months)
+    p = float(loan.principal)
+    if r == 0:
+        return p / n if n else 0
+    return p * r * (1 + r) ** n / ((1 + r) ** n - 1)
+
+
+def _credit_billing_row_dates(billing_day: int, year: int, month: int):
+    """Returns (cycle_start, billing_date) for credit card charge in given month."""
+    bd = max(1, min(billing_day, 28))
+    last_day = calendar.monthrange(year, month)[1]
+    billing_date = date(year, month, min(bd, last_day))
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    prev_last = calendar.monthrange(prev_year, prev_month)[1]
+    cycle_start = date(prev_year, prev_month, min(bd, prev_last))
+    return cycle_start, billing_date
+
+
+@router.get("/month-ledger", response_model=MonthLedger)
+async def month_ledger(
+    month: str = Query(None, description="YYYY-MM, ברירת מחדל: החודש הנוכחי"),
+    include_loans: bool = Query(True),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    hid = household.id
+    today = date.today()
+
+    # ── Parse month ──────────────────────────────────────────────────────────
+    if month:
+        try:
+            year, mon = int(month[:4]), int(month[5:7])
+        except Exception:
+            from fastapi import HTTPException
+            raise HTTPException(400, "פורמט חודש לא תקין, השתמש ב-YYYY-MM")
+    else:
+        year, mon = today.year, today.month
+
+    month_start = date(year, mon, 1)
+    month_end = date(year, mon + 1, 1) if mon < 12 else date(year + 1, 1, 1)
+
+    # ── Primary checking account ─────────────────────────────────────────────
+    acc_result = await db.execute(
+        select(Account).where(
+            Account.household_id == hid,
+            Account.is_active == True,
+        )
+    )
+    all_accounts = acc_result.scalars().all()
+    accounts_by_id = {a.id: a for a in all_accounts}
+
+    checking_accounts = [a for a in all_accounts if a.type == "checking"]
+    primary = next((a for a in checking_accounts if a.show_on_dashboard), None) or (checking_accounts[0] if checking_accounts else None)
+
+    # ── Start-of-month balance for primary account ───────────────────────────
+    opening_balance = 0.0
+    if primary:
+        pre_result = await db.execute(
+            select(
+                func.coalesce(func.sum(case((Transaction.kind == "income", Transaction.amount), else_=-Transaction.amount)), 0)
+            ).where(
+                Transaction.account_id == primary.id,
+                Transaction.is_planned == False,
+                Transaction.transaction_date < month_start,
+            )
+        )
+        opening_balance = float(primary.opening_balance) + float(pre_result.scalar() or 0)
+
+    # ── ExpectedOccurrences for the month ────────────────────────────────────
+    occ_result = await db.execute(
+        select(ExpectedOccurrence)
+        .options(
+            selectinload(ExpectedOccurrence.rule).selectinload(RecurringRule.account),
+            selectinload(ExpectedOccurrence.matched_transaction),
+        )
+        .where(
+            ExpectedOccurrence.household_id == hid,
+            ExpectedOccurrence.due_date >= month_start,
+            ExpectedOccurrence.due_date < month_end,
+        )
+    )
+    occurrences = occ_result.scalars().all()
+
+    # Track matched transaction IDs and which credit accounts have rule coverage
+    matched_tx_ids: set[int] = set()
+    rule_covered_account_ids: set[int] = set()
+    for occ in occurrences:
+        if occ.matched_transaction_id:
+            matched_tx_ids.add(occ.matched_transaction_id)
+        if occ.rule and occ.rule.match_pattern:
+            rule_covered_account_ids.add(occ.rule.account_id)
+
+    # ── Actual transactions for the month (non-credit, not matched) ──────────
+    non_credit_account_ids = [a.id for a in all_accounts if a.type not in ("credit", "investment")]
+    txn_result = await db.execute(
+        select(Transaction).where(
+            Transaction.household_id == hid,
+            Transaction.is_planned == False,
+            Transaction.account_id.in_(non_credit_account_ids),
+            Transaction.transaction_date >= month_start,
+            Transaction.transaction_date < month_end,
+        )
+    )
+    all_actual_txns = [t for t in txn_result.scalars().all() if t.id not in matched_tx_ids]
+
+    # ── Build rows ───────────────────────────────────────────────────────────
+    rows: list[LedgerRow] = []
+
+    # 1. Occurrence rows
+    for occ in occurrences:
+        rule = occ.rule
+        acc_name = rule.account.name if rule and rule.account else None
+        sign = 1 if occ.kind == "income" else -1
+
+        if occ.status == "matched" and occ.matched_transaction:
+            tx = occ.matched_transaction
+            actual_amt = float(tx.amount) * sign
+            rows.append(LedgerRow(
+                day=tx.transaction_date.day,
+                date=tx.transaction_date,
+                description=rule.description or (rule.match_pattern or ""),
+                amount=actual_amt,
+                source="expected",
+                status="matched",
+                expected_amount=float(occ.expected_amount) * sign,
+                actual_amount=actual_amt,
+                matched_date=tx.transaction_date,
+                occurrence_id=occ.id,
+                transaction_id=tx.id,
+                account_name=acc_name,
+            ))
+        elif occ.status == "skipped":
+            rows.append(LedgerRow(
+                day=occ.due_date.day,
+                date=occ.due_date,
+                description=rule.description or (rule.match_pattern or "") if rule else "",
+                amount=0.0,
+                source="expected",
+                status="skipped",
+                expected_amount=float(occ.expected_amount) * sign,
+                occurrence_id=occ.id,
+                account_name=acc_name,
+            ))
+        else:
+            exp_signed = float(occ.expected_amount) * sign
+            rows.append(LedgerRow(
+                day=occ.due_date.day,
+                date=occ.due_date,
+                description=rule.description or (rule.match_pattern or "") if rule else "",
+                amount=exp_signed,
+                source="expected",
+                status=occ.status,
+                expected_amount=exp_signed,
+                occurrence_id=occ.id,
+                account_name=acc_name,
+            ))
+
+    # 2. Actual transaction rows (not matched)
+    for tx in all_actual_txns:
+        sign = 1 if tx.kind == "income" else -1
+        acc_name = accounts_by_id[tx.account_id].name if tx.account_id in accounts_by_id else None
+        rows.append(LedgerRow(
+            day=tx.transaction_date.day,
+            date=tx.transaction_date,
+            description=tx.description or "",
+            amount=float(tx.amount) * sign,
+            source="actual",
+            status="actual",
+            actual_amount=float(tx.amount) * sign,
+            transaction_id=tx.id,
+            account_name=acc_name,
+        ))
+
+    # 3. Credit card billing rows
+    credit_accounts = [a for a in all_accounts if a.type == "credit" and a.billing_day]
+    for acc in credit_accounts:
+        if acc.id in rule_covered_account_ids:
+            continue  # rule occurrence takes precedence
+
+        cycle_start, billing_date = _credit_billing_row_dates(acc.billing_day, year, mon)
+        # Sum expenses in this cycle
+        cycle_result = await db.execute(
+            select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+                Transaction.account_id == acc.id,
+                Transaction.kind == "expense",
+                Transaction.is_planned == False,
+                Transaction.transaction_date >= cycle_start,
+                Transaction.transaction_date < billing_date,
+            )
+        )
+        cycle_total = float(cycle_result.scalar() or 0)
+        if cycle_total == 0:
+            continue
+
+        # Apply revolving: only the portion charged this cycle
+        if acc.revolving_amount is not None:
+            charge = min(cycle_total, float(acc.revolving_amount))
+        else:
+            charge = cycle_total
+
+        display_name = acc.nickname or acc.name
+        rows.append(LedgerRow(
+            day=billing_date.day,
+            date=billing_date,
+            description=f"חיוב {display_name}",
+            amount=-charge,
+            source="card_billing",
+            status="pending" if billing_date >= today else "actual",
+            expected_amount=-charge,
+            account_name=display_name,
+        ))
+
+    # 4. Loan payment rows
+    if include_loans:
+        loans_result = await db.execute(
+            select(Loan).where(Loan.household_id == hid, Loan.is_active == True)
+        )
+        loans = loans_result.scalars().all()
+        for loan in loans:
+            if not loan.payment_day:
+                continue
+            last_day = calendar.monthrange(year, mon)[1]
+            payment_date = date(year, mon, min(loan.payment_day, last_day))
+            if payment_date < loan.start_date:
+                continue
+            end_date = loan.start_date.replace(day=1)
+            for _ in range(loan.term_months):
+                end_date = (end_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+            if payment_date >= end_date:
+                continue
+
+            payment = _loan_monthly_payment(loan)
+            rows.append(LedgerRow(
+                day=payment_date.day,
+                date=payment_date,
+                description=f"תשלום הלוואה — {loan.name}",
+                amount=-round(payment, 2),
+                source="loan",
+                status="pending" if payment_date >= today else "actual",
+                expected_amount=-round(payment, 2),
+                account_name=None,
+            ))
+
+    # ── Sort rows by date, then source priority ───────────────────────────────
+    source_order = {"expected": 0, "card_billing": 1, "loan": 2, "actual": 3}
+    rows.sort(key=lambda r: (r.date, source_order.get(r.source, 9)))
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+    total_exp_income = sum(r.amount for r in rows if r.amount > 0 and r.status not in ("skipped",))
+    total_exp_expense = sum(-r.amount for r in rows if r.amount < 0 and r.status not in ("skipped",))
+
+    actual_so_far = sum(
+        r.actual_amount or r.amount
+        for r in rows
+        if r.status in ("matched", "actual") and r.date <= today
+    )
+
+    projected_delta = 0.0
+    for r in rows:
+        if r.status == "skipped":
+            continue
+        if r.status in ("matched", "actual"):
+            projected_delta += r.actual_amount if r.actual_amount is not None else r.amount
+        else:
+            projected_delta += r.amount
+
+    projected_end = round(opening_balance + projected_delta, 2)
+
+    summary = LedgerSummary(
+        opening_balance=round(opening_balance, 2),
+        total_expected_income=round(total_exp_income, 2),
+        total_expected_expense=round(total_exp_expense, 2),
+        actual_so_far=round(actual_so_far, 2),
+        projected_end_balance=projected_end,
+    )
+
+    return MonthLedger(
+        month=f"{year}-{mon:02d}",
+        opening_account_name=primary.nickname or primary.name if primary else None,
+        opening_balance=round(opening_balance, 2),
+        bank_balance=float(primary.bank_balance) if primary and primary.bank_balance is not None else None,
+        bank_balance_at=primary.bank_balance_at if primary else None,
+        rows=rows,
+        summary=summary,
+    )

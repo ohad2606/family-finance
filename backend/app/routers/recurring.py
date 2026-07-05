@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_household, verify_csrf
-from app.models.finance import RecurringRule, Account
-from app.schemas.finance import RecurringRuleCreate, RecurringRuleUpdate, RecurringRuleOut
+from app.models.finance import ExpectedOccurrence, RecurringRule, Account
+from app.schemas.finance import ExpectedOccurrenceOut, RecurringRuleCreate, RecurringRuleUpdate, RecurringRuleOut
+from app.scheduler import generate_occurrences
 
 router = APIRouter(prefix="/recurring", tags=["recurring"])
 
@@ -28,6 +29,10 @@ def _to_out(r: RecurringRule) -> RecurringRuleOut:
         next_date=r.next_date,
         end_date=r.end_date,
         is_active=r.is_active,
+        match_pattern=r.match_pattern,
+        amount_tolerance_pct=float(r.amount_tolerance_pct) if r.amount_tolerance_pct is not None else None,
+        match_window_days=r.match_window_days,
+        grace_days=r.grace_days,
     )
 
 
@@ -59,6 +64,7 @@ async def create_rule(body: RecurringRuleCreate, ctx=Depends(get_current_househo
     rule = RecurringRule(household_id=household.id, created_by=user.id, **body.model_dump())
     db.add(rule)
     await db.commit()
+    await generate_occurrences()
     result = await db.execute(select(RecurringRule).where(RecurringRule.id == rule.id).options(*_opts()))
     return _to_out(result.scalar_one())
 
@@ -75,7 +81,8 @@ async def update_rule(rule_id: int, body: RecurringRuleUpdate, ctx=Depends(get_c
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(rule, k, v)
     await db.commit()
-    await db.refresh(rule)
+    if body.match_pattern is not None:
+        await generate_occurrences()
     result = await db.execute(select(RecurringRule).where(RecurringRule.id == rule_id).options(*_opts()))
     return _to_out(result.scalar_one())
 
@@ -112,3 +119,49 @@ async def upcoming_rules(
         .options(*_opts())
     )
     return [_to_out(r) for r in result.scalars().all()]
+
+
+@router.get("/occurrences", response_model=list[ExpectedOccurrenceOut])
+async def list_occurrences(
+    month: str = Query(..., description="YYYY-MM"),
+    ctx=Depends(get_current_household),
+    db: AsyncSession = Depends(get_db),
+):
+    _, household = ctx
+    try:
+        year, mon = int(month[:4]), int(month[5:7])
+        start = date(year, mon, 1)
+        end = date(year, mon + 1, 1) if mon < 12 else date(year + 1, 1, 1)
+    except Exception:
+        raise HTTPException(400, "פורמט חודש לא תקין, השתמש ב-YYYY-MM")
+    result = await db.execute(
+        select(ExpectedOccurrence).where(
+            ExpectedOccurrence.household_id == household.id,
+            ExpectedOccurrence.due_date >= start,
+            ExpectedOccurrence.due_date < end,
+        ).order_by(ExpectedOccurrence.due_date)
+    )
+    return result.scalars().all()
+
+
+@router.post("/occurrences/{occ_id}/skip", dependencies=[Depends(verify_csrf)])
+async def skip_occurrence(occ_id: int, ctx=Depends(get_current_household), db: AsyncSession = Depends(get_db)):
+    _, household = ctx
+    result = await db.execute(
+        select(ExpectedOccurrence)
+        .options(selectinload(ExpectedOccurrence.rule))
+        .where(ExpectedOccurrence.id == occ_id, ExpectedOccurrence.household_id == household.id)
+    )
+    occ = result.scalar_one_or_none()
+    if not occ:
+        raise HTTPException(404, "מופע לא נמצא")
+    if occ.status == "matched":
+        raise HTTPException(400, "לא ניתן לדלג על מופע שכבר בוצע")
+    occ.status = "skipped"
+    # Advance rule so it generates the next cycle
+    if occ.rule.next_date == occ.due_date:
+        from app.scheduler import _advance
+        occ.rule.next_date = _advance(occ.rule)
+    await db.commit()
+    await generate_occurrences()
+    return {"ok": True}

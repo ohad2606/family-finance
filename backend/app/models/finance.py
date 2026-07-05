@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean, Date, DateTime, Enum, ForeignKey,
-    Integer, Numeric, SmallInteger, String, Text, func,
+    Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -174,5 +174,36 @@ class RecurringRule(Base):
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    match_pattern: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    amount_tolerance_pct: Mapped[float] = mapped_column(Numeric(5, 2), server_default="15", nullable=False)
+    match_window_days: Mapped[int] = mapped_column(SmallInteger, server_default="12", nullable=False)
+    grace_days: Mapped[int] = mapped_column(SmallInteger, server_default="5", nullable=False)
+
     account: Mapped["Account"] = relationship()
     category: Mapped["Category | None"] = relationship()
+    occurrences: Mapped[list["ExpectedOccurrence"]] = relationship(back_populates="rule")
+
+
+class ExpectedOccurrence(Base):
+    __tablename__ = "expected_occurrences"
+    __table_args__ = (UniqueConstraint("rule_id", "due_date", name="uq_occurrence_rule_date"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False, index=True)
+    rule_id: Mapped[int] = mapped_column(ForeignKey("recurring_rules.id"), nullable=False, index=True)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    expected_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    kind: Mapped[str] = mapped_column(Enum("income", "expense", name="occurrence_kind"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("pending", "matched", "overdue", "skipped", name="occurrence_status"),
+        nullable=False,
+        server_default="pending",
+    )
+    matched_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("transactions.id"), nullable=True, unique=True
+    )
+    matched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    rule: Mapped["RecurringRule"] = relationship(back_populates="occurrences")
+    matched_transaction: Mapped["Transaction | None"] = relationship()

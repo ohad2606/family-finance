@@ -1,5 +1,8 @@
 import hashlib
+import logging
 from datetime import date, datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
@@ -10,6 +13,7 @@ from app.core.config import settings
 from app.database import get_db
 from app.deps import get_current_household, verify_csrf
 from app.models.finance import Account, BankSyncCommand, BankSyncLog, Transaction
+from app.services.matching import run_matching
 
 router = APIRouter(prefix="/bank-sync", tags=["bank-sync"])
 
@@ -159,6 +163,11 @@ async def bank_sync(
     ))
 
     await db.commit()
+
+    if stats["txns_created"] > 0:
+        matched = await run_matching(db, payload.household_id)
+        logger.info(f"bank_sync: matched {matched} occurrences after ingest")
+
     return {"ok": True, "source": payload.source, **stats}
 
 

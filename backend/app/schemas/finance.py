@@ -222,6 +222,10 @@ class RecurringRuleCreate(BaseModel):
     frequency: str
     next_date: date
     end_date: Optional[date] = None
+    match_pattern: Optional[str] = None
+    amount_tolerance_pct: Optional[float] = None
+    match_window_days: Optional[int] = None
+    grace_days: Optional[int] = None
 
 
 class RecurringRuleUpdate(BaseModel):
@@ -231,6 +235,10 @@ class RecurringRuleUpdate(BaseModel):
     next_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: Optional[bool] = None
+    match_pattern: Optional[str] = None
+    amount_tolerance_pct: Optional[float] = None
+    match_window_days: Optional[int] = None
+    grace_days: Optional[int] = None
 
 
 class RecurringRuleOut(BaseModel):
@@ -247,6 +255,23 @@ class RecurringRuleOut(BaseModel):
     next_date: date
     end_date: Optional[date]
     is_active: bool
+    match_pattern: Optional[str]
+    amount_tolerance_pct: Optional[float]
+    match_window_days: Optional[int]
+    grace_days: Optional[int]
+
+    model_config = {"from_attributes": True}
+
+
+class ExpectedOccurrenceOut(BaseModel):
+    id: int
+    rule_id: int
+    due_date: date
+    expected_amount: float
+    kind: str
+    status: str
+    matched_transaction_id: Optional[int]
+    matched_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
 
@@ -327,3 +352,36 @@ class FinancialHealth(BaseModel):
     budget_adherence: HealthMetric
     runway_months: HealthMetric
     debt_burden: HealthMetric
+
+
+class LedgerRow(BaseModel):
+    day: int
+    date: date
+    description: str
+    amount: float          # signed: income +, expense -
+    source: str            # 'expected'|'actual'|'card_billing'|'loan'
+    status: str            # 'matched'|'pending'|'overdue'|'actual'|'skipped'
+    expected_amount: Optional[float] = None
+    actual_amount: Optional[float] = None
+    matched_date: Optional[date] = None
+    occurrence_id: Optional[int] = None
+    transaction_id: Optional[int] = None
+    account_name: Optional[str] = None
+
+
+class LedgerSummary(BaseModel):
+    opening_balance: float
+    total_expected_income: float
+    total_expected_expense: float
+    actual_so_far: float
+    projected_end_balance: float
+
+
+class MonthLedger(BaseModel):
+    month: str
+    opening_account_name: Optional[str]
+    opening_balance: float           # start-of-month computed balance
+    bank_balance: Optional[float]    # live snapshot if available
+    bank_balance_at: Optional[datetime]
+    rows: list[LedgerRow]
+    summary: LedgerSummary
