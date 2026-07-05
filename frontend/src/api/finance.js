@@ -62,4 +62,5 @@ export const triggerBankSync = () => api.post('/bank-sync/trigger').then(r => r.
 export const getAiInsights = () => api.get('/ai/insights').then(r => r.data)
 
 export const getMonthLedger = (month) => api.get('/dashboard/month-ledger', { params: { month } }).then(r => r.data)
+export const getRecurringOccurrences = (month) => api.get('/recurring/occurrences', { params: { month } }).then(r => r.data)
 export const skipOccurrence = (id) => api.post(`/recurring/occurrences/${id}/skip`).then(r => r.data)
