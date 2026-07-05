@@ -11,6 +11,7 @@ import NetWorthChart from '../components/NetWorthChart'
 import HealthCard from '../components/HealthCard'
 import TakzivLogo from '../components/TakzivLogo'
 import DonutChart from '../components/DonutChart'
+import MonthLedger from '../components/MonthLedger'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -324,7 +325,10 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 5 — Net Worth */}
+        {/* 5 — Month Ledger */}
+        <MonthLedger />
+
+        {/* 6 — Net Worth */}
         <div style={styles.netWorthCard}>
           <p style={styles.netWorthLabel}>שווי נקי</p>
           <p style={styles.netWorthValue}>{sumLoading ? '...' : fmt(summary?.net_worth)}</p>
