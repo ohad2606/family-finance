@@ -12,6 +12,7 @@ import HealthCard from '../components/HealthCard'
 import TakzivLogo from '../components/TakzivLogo'
 import DonutChart from '../components/DonutChart'
 import MonthLedger from '../components/MonthLedger'
+import './DashboardSimple.css'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -27,22 +28,24 @@ export default function DashboardPage() {
   const [showTx, setShowTx] = useState(false)
   const [monthDetail, setMonthDetail] = useState(null)  // null | 'income' | 'expense'
   const [editingAccount, setEditingAccount] = useState(null)
+  const [showDetails, setShowDetails] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
 
   const thisMonthStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01` })()
 
   const qc = useQueryClient()
-  const { data: summary, isLoading: sumLoading } = useQuery({ queryKey: ['dashboard-summary'], queryFn: getDashboardSummary })
+  const { data: summary, isLoading: sumLoading, isError: summaryError, refetch: retrySummary } = useQuery({ queryKey: ['dashboard-summary'], queryFn: getDashboardSummary })
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: transactions = [] } = useQuery({ queryKey: ['transactions', { limit: 10 }], queryFn: () => getTransactions({ limit: 10, is_planned: false }) })
   const { data: plannedTxs = [] } = useQuery({ queryKey: ['planned-transactions'], queryFn: getPlannedTransactions })
-  const { data: cashflow = [] } = useQuery({ queryKey: ['cashflow'], queryFn: () => getCashflow(6) })
-  const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr) })
-  const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7) })
-  const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12) })
-  const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth })
-  const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense') })
-  const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings })
-  const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans })
+  const { data: cashflow = [] } = useQuery({ queryKey: ['cashflow'], queryFn: () => getCashflow(6), enabled: showDetails })
+  const { data: budget = [] } = useQuery({ queryKey: ['budget', thisMonthStr], queryFn: () => getBudget(thisMonthStr), enabled: showDetails })
+  const { data: upcoming = [] } = useQuery({ queryKey: ['upcoming-recurring'], queryFn: () => getUpcomingRecurring(7), enabled: showDetails })
+  const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12), enabled: showDetails })
+  const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth, enabled: showDetails })
+  const { data: spending = [] } = useQuery({ queryKey: ['spending', thisMonthStr], queryFn: () => getSpending(thisMonthStr, 'expense'), enabled: showDetails })
+  const { data: savingsGoals = [] } = useQuery({ queryKey: ['savings'], queryFn: getSavings, enabled: showDetails })
+  const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: getLoans, enabled: showDetails })
   const monthEnd = (() => { const d = new Date(); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0); return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}` })()
   const { data: monthTxs = [] } = useQuery({
     queryKey: ['month-txs', monthDetail],
@@ -102,6 +105,28 @@ export default function DashboardPage() {
       </header>
 
       <main style={styles.main}>
+        {!showDetails ? (
+          <SimpleHome
+            summary={summary} loading={sumLoading} summaryError={summaryError} onRetry={retrySummary} accounts={accounts} transactions={transactions}
+            plannedDue={plannedDue} bankSyncStatus={bankSyncStatus} bankSyncPending={bankSyncPending}
+            triggering={triggering} syncMessage={syncMessage} onSync={async () => {
+              setTriggering(true)
+              setSyncMessage('')
+              try {
+                await triggerBankSync()
+                await qc.invalidateQueries({ queryKey: ['bank-sync-status'] })
+                await qc.invalidateQueries({ queryKey: ['transactions'] })
+                await qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
+                setSyncMessage('בקשת העדכון נשלחה. הנתונים יופיעו לאחר שהאיסוף יסתיים.')
+              } catch {
+                setSyncMessage('לא הצלחנו לבקש עדכון כרגע. נסו שוב מאוחר יותר.')
+              } finally { setTriggering(false) }
+            }}
+            onAdd={() => setShowTx(true)} onNavigate={navigate} onDetail={setMonthDetail}
+            onShowDetails={() => setShowDetails(true)}
+          />
+        ) : <>
+        <button className="simple-back" onClick={() => setShowDetails(false)}>→ חזרה לתמונה פשוטה</button>
         {/* 1 — Accounts status */}
         {(() => {
           const fmtBank = n => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
@@ -599,6 +624,7 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+        </>}
       </main>
 
       {/* FAB */}
@@ -643,6 +669,23 @@ export default function DashboardPage() {
       )}
     </div>
   )
+}
+
+function SimpleHome({ summary, loading, summaryError, onRetry, accounts, transactions, plannedDue, bankSyncStatus, bankSyncPending, triggering, syncMessage, onSync, onAdd, onNavigate, onDetail, onShowDetails }) {
+  const month = new Date().toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
+  const recentSync = [...bankSyncStatus].sort((a, b) => new Date(b.synced_at || 0) - new Date(a.synced_at || 0))[0]
+  const syncError = bankSyncStatus.find(s => s.status !== 'ok')
+  const checking = accounts.filter(a => a.show_on_dashboard && a.type === 'checking' && a.bank_balance != null)
+  const balance = summary?.month_balance ?? 0
+  return <div className="simple-home">
+    <div className="simple-heading"><div><span className="simple-eyebrow">{month}</span><h2>המצב החודש</h2><p>הנתונים שנקלטו עד היום, בלי תנועות עתידיות</p></div><button className="simple-add" onClick={onAdd}>+ הוספת תנועה</button></div>
+    <section className="simple-balance" aria-label="סיכום החודש"><span>הכנסות פחות הוצאות</span>{summaryError ? <div className="simple-summary-error">לא ניתן לטעון את סיכום החודש. <button onClick={() => onRetry()}>נסה שוב</button></div> : <><strong>{loading ? '…' : fmt(balance)}</strong><p>זהו סיכום התנועות שנרשמו, לא יתרת חשבון הבנק.</p><div className="simple-metrics"><button onClick={() => onDetail('income')}><span>הכנסות</span><b>{loading ? '…' : fmt(summary?.month_income)}</b></button><button onClick={() => onDetail('expense')}><span>הוצאות</span><b>{loading ? '…' : fmt(summary?.month_expense)}</b></button></div></>}</section>
+    {(bankSyncStatus.length > 0 || bankSyncPending) ? <section className="simple-sync" aria-label="עדכון בנקים וכרטיסי אשראי"><div><strong>{bankSyncPending ? 'הנתונים מתעדכנים' : syncError ? 'יש חיבור שדורש בדיקה' : 'נתוני הבנק והאשראי'}</strong><p>{bankSyncPending ? 'האיסוף מתבצע ברקע. אפשר להמשיך להשתמש באפליקציה.' : syncError ? `${syncError.source}: ${syncError.error_message || 'העדכון האחרון נכשל'}` : recentSync?.synced_at ? `עודכן לאחרונה ${new Date(recentSync.synced_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}` : 'עדיין אין עדכון מוצלח'}</p>{syncMessage && <p role="status">{syncMessage}</p>}</div><button onClick={onSync} disabled={bankSyncPending || triggering}>{bankSyncPending || triggering ? 'מעדכן…' : 'עדכון עכשיו'}</button></section> : <section className="simple-sync"><div><strong>אין עדיין נתונים אוטומטיים</strong><p>אפשר להתחיל בהוספת תנועה או בייבוא קובץ מהבנק.</p></div><button onClick={() => onNavigate('/import')}>ייבוא קובץ</button></section>}
+    {plannedDue.length > 0 && <section className="simple-panel"><div className="simple-panel-head"><h3>דורש בדיקה</h3><button onClick={onShowDetails}>הצגת {plannedDue.length} תנועות מתוכננות</button></div><p>תנועות שתכננתם והגיע מועדן ממתינות לאישור. הן עדיין לא נכללות בסיכום החודש.</p></section>}
+    {checking.length > 0 && <section className="simple-panel"><div className="simple-panel-head"><h3>יתרות עו״ש</h3><button onClick={() => onNavigate('/settings')}>ניהול חשבונות</button></div>{checking.map(a => <div className="simple-row" key={a.id}><span>{a.nickname || a.name}</span><strong>{fmt(a.bank_balance)}</strong></div>)}</section>}
+    <section className="simple-panel"><div className="simple-panel-head"><h3>תנועות אחרונות</h3><button onClick={() => onNavigate('/transactions')}>כל התנועות ←</button></div>{transactions.length ? transactions.slice(0, 5).map(tx => <div className="simple-row" key={tx.id}><div><strong>{tx.description || tx.category_name || 'תנועה'}</strong><small>{tx.account_name ? `${tx.account_name} · ` : ''}{new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('he-IL')}</small></div><b className={tx.kind === 'income' ? 'simple-income' : 'simple-expense'}>{tx.kind === 'income' ? '+' : '−'}{fmt(tx.amount)}</b></div>) : <p className="simple-empty">עדיין אין תנועות. אפשר להוסיף אחת או לעדכן את הבנקים.</p>}</section>
+    <button className="simple-details" onClick={onShowDetails}>הצגת הדוח המלא: תחזית, תקציב, הלוואות וחיסכון</button>
+  </div>
 }
 
 const styles = {
