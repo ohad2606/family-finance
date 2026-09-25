@@ -367,6 +367,7 @@ class LedgerRow(BaseModel):
     occurrence_id: Optional[int] = None
     transaction_id: Optional[int] = None
     account_name: Optional[str] = None
+    in_projection: bool = False   # counted on top of the projection's base balance
 
 
 class LedgerSummary(BaseModel):
@@ -375,6 +376,8 @@ class LedgerSummary(BaseModel):
     total_expected_expense: float
     actual_so_far: float
     projected_end_balance: float
+    projection_basis: str = "opening"   # 'live' = from the bank snapshot, 'opening' = from start-of-month
+    projection_base: float = 0          # the balance the projection was built on top of
 
 
 class MonthLedger(BaseModel):

@@ -233,11 +233,29 @@ async def update_command(
     if cmd is None:
         raise HTTPException(status_code=404, detail="Command not found")
 
-    cmd.status = body.status
-    cmd.result = body.result
+    new_status = body.status
+    new_result = body.result
+
+    if new_status == "done":
+        threshold = cmd.started_at or cmd.created_at
+        log_row = await db.execute(
+            select(BankSyncLog.id)
+            .where(
+                BankSyncLog.household_id == cmd.household_id,
+                BankSyncLog.created_at >= threshold,
+            )
+            .limit(1)
+        )
+        if log_row.scalar_one_or_none() is None:
+            new_status = "error"
+            marker = "worker reported done but no bank_sync_logs written"
+            new_result = f"{new_result}; {marker}" if new_result else marker
+
+    cmd.status = new_status
+    cmd.result = new_result
     cmd.completed_at = datetime.now(timezone.utc)
     await db.commit()
-    return {"ok": True}
+    return {"ok": True, "status": new_status}
 
 
 # ── Status endpoint (shown in dashboard) ──────────────────────────────────────
@@ -287,4 +305,21 @@ async def bank_sync_status(
     for item in result:
         item["has_pending"] = has_pending
 
-    return {"syncs": result, "has_pending": has_pending}
+    last_cmd_row = await db.execute(
+        select(BankSyncCommand)
+        .where(BankSyncCommand.household_id == hid)
+        .order_by(desc(BankSyncCommand.created_at))
+        .limit(1)
+    )
+    last_cmd = last_cmd_row.scalar_one_or_none()
+    last_command = None
+    if last_cmd is not None:
+        last_command = {
+            "id": last_cmd.id,
+            "status": last_cmd.status,
+            "result": last_cmd.result,
+            "created_at": last_cmd.created_at.isoformat() if last_cmd.created_at else None,
+            "completed_at": last_cmd.completed_at.isoformat() if last_cmd.completed_at else None,
+        }
+
+    return {"syncs": result, "has_pending": has_pending, "last_command": last_command}

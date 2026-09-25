@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getSpending, getCashflow, getAnnualReport } from '../api/finance'
+import { getSpending, getCashflow, getAnnualReport, getDashboardSummary, getNetWorthHistory, getFinancialHealth } from '../api/finance'
 import DonutChart from '../components/DonutChart'
 import CashflowChart from '../components/CashflowChart'
+import NetWorthChart from '../components/NetWorthChart'
+import HealthCard from '../components/HealthCard'
 
 const C = {
   paper: '#E9EBE4', card: '#F7F8F4', ink: '#1B2A27', muted: '#6B746E',
@@ -274,6 +276,49 @@ function AnnualTab() {
   )
 }
 
+/* ─── Wealth tab — net worth + financial health, moved off the dashboard ─── */
+function WealthTab() {
+  const { data: summary, isLoading } = useQuery({ queryKey: ['dashboard-summary'], queryFn: getDashboardSummary })
+  const { data: nwHistory = [] } = useQuery({ queryKey: ['networth-history'], queryFn: () => getNetWorthHistory(12) })
+  const { data: health } = useQuery({ queryKey: ['health'], queryFn: getFinancialHealth })
+
+  return (
+    <main style={s.main}>
+      <div style={s.netCard}>
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem' }}>שווי נקי</p>
+          <p style={{ fontFamily: 'Heebo', fontWeight: 900, fontSize: '2.2rem', margin: '2px 0' }}>
+            {isLoading ? '···' : fmt(summary?.net_worth)}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.82rem', marginTop: 4 }}>
+            <span style={{ color: '#6EE7B7' }}>↑ {fmt(summary?.total_assets)} נכסים</span>
+            <span style={{ color: '#FCA5A5' }}>↓ {fmt(summary?.total_liabilities)} חובות</span>
+          </div>
+
+          {nwHistory.length >= 2 && (() => {
+            const first = nwHistory[0].net_worth
+            const last = nwHistory[nwHistory.length - 1].net_worth
+            const delta = last - first
+            const pct = first !== 0 ? Math.round((delta / Math.abs(first)) * 100) : null
+            return (
+              <div style={{ marginTop: 12 }}>
+                <NetWorthChart data={nwHistory} />
+                {pct !== null && (
+                  <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.78rem', color: delta >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                    {delta >= 0 ? '▲' : '▼'} {Math.abs(pct)}% ב-12 חודשים
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+
+      <HealthCard health={health} />
+    </main>
+  )
+}
+
 /* ─── Page wrapper ─── */
 export default function AnalyticsPage({ onBack }) {
   const [tab, setTab] = useState('monthly')
@@ -286,7 +331,7 @@ export default function AnalyticsPage({ onBack }) {
       </header>
 
       <div style={s.tabBar}>
-        {[{id:'monthly',label:'חודשי'},{id:'annual',label:'שנתי'}].map(t => (
+        {[{id:'monthly',label:'חודשי'},{id:'annual',label:'שנתי'},{id:'wealth',label:'הון'}].map(t => (
           <button key={t.id}
             style={{ ...s.tab, ...(tab===t.id ? s.tabActive : {}) }}
             onClick={() => setTab(t.id)}>
@@ -295,7 +340,7 @@ export default function AnalyticsPage({ onBack }) {
         ))}
       </div>
 
-      {tab === 'monthly' ? <MonthlyTab /> : <AnnualTab />}
+      {tab === 'monthly' ? <MonthlyTab /> : tab === 'annual' ? <AnnualTab /> : <WealthTab />}
     </div>
   )
 }

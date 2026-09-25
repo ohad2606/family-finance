@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getCategories, createCategory, updateCategory, deleteCategory,
   getAccounts, createAccount, deleteAccount,
+  getBankSyncStatus, triggerBankSync,
 } from '../api/finance'
 import EditAccountSheet from '../components/EditAccountSheet'
 import AddAccountSheet from '../components/AddAccountSheet'
@@ -290,6 +291,89 @@ function AccountsTab() {
   )
 }
 
+/* ─── Bank sync tab — per-source diagnostics, moved off the dashboard ─── */
+const SOURCE_LABELS = { isracard: 'ישראכרט', max: 'מקס', discount: 'דיסקונט' }
+
+function relTime(at) {
+  if (!at) return null
+  const diffMin = Math.round((Date.now() - new Date(at)) / 60000)
+  if (diffMin < 1) return 'עכשיו'
+  if (diffMin < 60) return `לפני ${diffMin} דקות`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `לפני ${diffH} שעות`
+  return `לפני ${Math.floor(diffH / 24)} ימים`
+}
+
+function BankSyncTab() {
+  const qc = useQueryClient()
+  const [triggering, setTriggering] = useState(false)
+
+  const { data = { syncs: [], has_pending: false, last_command: null } } = useQuery({
+    queryKey: ['bank-sync-status'],
+    queryFn: getBankSyncStatus,
+    staleTime: 30_000,
+    refetchInterval: (query) => query.state.data?.has_pending ? 10_000 : false,
+  })
+  const { syncs, has_pending: pending, last_command: lastCommand } = data
+
+  const lastDataAt = syncs.length ? syncs[0].synced_at : null
+  const failed = lastCommand?.status === 'error' && (!lastDataAt || new Date(lastCommand.completed_at) > new Date(lastDataAt))
+
+  return (
+    <>
+      <button
+        style={{ ...s.addBtn, marginTop: 0, marginBottom: 12, borderStyle: 'solid', borderColor: C.brass, color: C.brass, opacity: triggering || pending ? 0.6 : 1 }}
+        disabled={triggering || pending}
+        onClick={async () => {
+          setTriggering(true)
+          try {
+            await triggerBankSync()
+            await qc.invalidateQueries({ queryKey: ['bank-sync-status'] })
+          } finally {
+            setTriggering(false)
+          }
+        }}
+      >
+        {pending ? '⟳ מסנכרן…' : '⟳ סנכרן עכשיו'}
+      </button>
+
+      {pending && (
+        <p style={{ fontSize: '0.82rem', color: C.brass, margin: '0 0 12px' }}>
+          הסקרייפר הביתי יאסוף את הנתונים בדקה הקרובה...
+        </p>
+      )}
+
+      {failed && !pending && (
+        <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 12, padding: '0.75rem 1rem', marginBottom: 12, fontSize: '0.85rem', color: '#991B1B' }}>
+          <div style={{ fontWeight: 700, marginBottom: 2 }}>
+            ניסיון הסנכרון האחרון נכשל{relTime(lastCommand.completed_at) ? ` (${relTime(lastCommand.completed_at)})` : ''}
+          </div>
+          <div style={{ opacity: 0.9 }}>{lastCommand.result || 'ללא פרטים'}</div>
+        </div>
+      )}
+
+      {syncs.length === 0 ? (
+        <p style={{ color: C.muted, fontSize: '0.88rem', textAlign: 'center', padding: '1.5rem 0' }}>עדיין לא בוצע סנכרון</p>
+      ) : (
+        <div style={s.group}>
+          {syncs.map(sy => (
+            <div key={sy.source} style={s.row}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: sy.status === 'ok' ? C.income : C.expense, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: C.ink }}>{SOURCE_LABELS[sy.source] || sy.source}</span>
+              <span style={{ flex: 1, fontSize: '0.8rem', color: C.muted, textAlign: 'left' }}>
+                {sy.status === 'ok' ? `${sy.txns_created} חדשות · ${sy.txns_skipped} ידועות` : sy.error_message || 'שגיאה'}
+              </span>
+              {relTime(sy.synced_at) && (
+                <span style={{ fontSize: '0.75rem', color: C.muted, whiteSpace: 'nowrap' }}>{relTime(sy.synced_at)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 /* ─── Page ─── */
 export default function SettingsPage({ onBack }) {
   const [tab, setTab] = useState('categories')
@@ -302,7 +386,7 @@ export default function SettingsPage({ onBack }) {
       </header>
 
       <div style={s.tabBar}>
-        {[{ id: 'categories', label: 'קטגוריות' }, { id: 'accounts', label: 'חשבונות' }].map(t => (
+        {[{ id: 'categories', label: 'קטגוריות' }, { id: 'accounts', label: 'חשבונות' }, { id: 'sync', label: 'סנכרון בנקאי' }].map(t => (
           <button key={t.id}
             style={{ ...s.tab, ...(tab === t.id ? s.tabActive : {}) }}
             onClick={() => setTab(t.id)}>
@@ -312,7 +396,7 @@ export default function SettingsPage({ onBack }) {
       </div>
 
       <main style={s.main}>
-        {tab === 'categories' ? <CategoriesTab /> : <AccountsTab />}
+        {tab === 'categories' ? <CategoriesTab /> : tab === 'accounts' ? <AccountsTab /> : <BankSyncTab />}
       </main>
     </div>
   )

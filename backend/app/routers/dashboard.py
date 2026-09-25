@@ -756,16 +756,43 @@ async def month_ledger(
         if r.status in ("matched", "actual") and r.date <= today
     )
 
-    projected_delta = 0.0
+    # ── Projected end-of-month balance ────────────────────────────────────────
+    # Preferred basis: the live bank snapshot, plus everything that hasn't hit
+    # the account yet. Anything already inside the snapshot is skipped so it
+    # isn't counted twice. Falls back to the computed start-of-month balance
+    # when there is no usable snapshot for the month being viewed (past months,
+    # future months, or a stale scrape).
+    snapshot_at = primary.bank_balance_at if primary else None
+    snapshot_date = snapshot_at.date() if snapshot_at else None
+    use_live = (
+        primary is not None
+        and primary.bank_balance is not None
+        and snapshot_date is not None
+        and month_start <= snapshot_date < month_end
+    )
+
+    # Each row is flagged with `in_projection` so the client can show exactly
+    # which movements the number was built from, without re-deriving the rule.
+    delta = 0.0
     for r in rows:
         if r.status == "skipped":
             continue
         if r.status in ("matched", "actual"):
-            projected_delta += r.actual_amount if r.actual_amount is not None else r.amount
+            if use_live and (r.matched_date or r.date) <= snapshot_date:
+                continue  # already reflected in the bank balance
+            r.in_projection = True
+            delta += r.actual_amount if r.actual_amount is not None else r.amount
         else:
-            projected_delta += r.amount
+            r.in_projection = True
+            delta += r.amount
 
-    projected_end = round(opening_balance + projected_delta, 2)
+    if use_live:
+        projection_base = float(primary.bank_balance)
+        projection_basis = "live"
+    else:
+        projection_base = opening_balance
+        projection_basis = "opening"
+    projected_end = round(projection_base + delta, 2)
 
     summary = LedgerSummary(
         opening_balance=round(opening_balance, 2),
@@ -773,6 +800,8 @@ async def month_ledger(
         total_expected_expense=round(total_exp_expense, 2),
         actual_so_far=round(actual_so_far, 2),
         projected_end_balance=projected_end,
+        projection_basis=projection_basis,
+        projection_base=round(projection_base, 2),
     )
 
     return MonthLedger(
