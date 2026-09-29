@@ -96,6 +96,8 @@ class Transaction(Base):
         nullable=False,
     )
     is_planned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    # חיוב כרטיס אשראי מהעו"ש, כשהרכישות עצמן כבר נקלטות מהכרטיס — לא נספר כהוצאה
+    is_transfer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     external_ref: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

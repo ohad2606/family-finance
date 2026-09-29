@@ -33,6 +33,7 @@ def _to_out(t: Transaction) -> TransactionOut:
         transaction_date=t.transaction_date,
         source=t.source,
         is_planned=t.is_planned,
+        is_transfer=t.is_transfer,
         created_at=t.created_at,
     )
 
@@ -40,7 +41,7 @@ def _to_out(t: Transaction) -> TransactionOut:
 _LOAD = [selectinload(Transaction.account), selectinload(Transaction.category)]
 
 
-def _filters(household_id, from_date, to_date, account_id, category_id, kind, q, is_planned=None):
+def _filters(household_id, from_date, to_date, account_id, category_id, kind, q, is_planned=None, is_transfer=None):
     f = [Transaction.household_id == household_id]
     if from_date:
         f.append(Transaction.transaction_date >= from_date)
@@ -57,6 +58,8 @@ def _filters(household_id, from_date, to_date, account_id, category_id, kind, q,
         f.append(Transaction.description.ilike(term))
     if is_planned is not None:
         f.append(Transaction.is_planned == is_planned)
+    if is_transfer is not None:
+        f.append(Transaction.is_transfer == is_transfer)
     return f
 
 
@@ -71,13 +74,14 @@ async def list_transactions(
     kind: Optional[str] = Query(None),
     q: Optional[str] = Query(None, max_length=100),
     is_planned: Optional[bool] = Query(None),
+    is_transfer: Optional[bool] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
 ):
     _, household = ctx
     result = await db.execute(
         select(Transaction)
-        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q, is_planned)))
+        .where(and_(*_filters(household.id, from_date, to_date, account_id, category_id, kind, q, is_planned, is_transfer)))
         .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
         .limit(limit).offset(offset)
         .options(*_LOAD)

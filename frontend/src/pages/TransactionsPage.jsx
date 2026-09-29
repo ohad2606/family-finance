@@ -179,10 +179,10 @@ export default function TransactionsPage({ onBack }) {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={styles.desc}>{tx.description || tx.category_name || '—'}</p>
-                          <p style={styles.meta}>{tx.account_name}{tx.category_name ? ` · ${tx.category_name}` : ''}</p>
+                          <p style={styles.meta}>{tx.account_name}{tx.category_name ? ` · ${tx.category_name}` : ''}{tx.is_transfer ? ' · תשלום כרטיס, לא נספר בהוצאות' : ''}</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <p style={{ ...styles.amount, color: tx.kind === 'income' ? C.income : C.expense }}>
+                          <p style={{ ...styles.amount, color: tx.is_transfer ? C.muted : tx.kind === 'income' ? C.income : C.expense }}>
                             {tx.kind === 'income' ? '+' : '-'}{fmt(tx.amount)}
                           </p>
                           <button style={styles.deleteBtn} onClick={e => { e.stopPropagation(); setConfirmDelete(tx) }}>✕</button>

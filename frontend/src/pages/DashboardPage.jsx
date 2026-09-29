@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const monthEnd = (() => { const d = new Date(); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0); return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}` })()
   const { data: monthTxs = [] } = useQuery({
     queryKey: ['month-txs', monthDetail],
-    queryFn: () => getTransactions({ from_date: thisMonthStr, to_date: monthEnd, kind: monthDetail, is_planned: false, limit: 200 }),
+    queryFn: () => getTransactions({ from_date: thisMonthStr, to_date: monthEnd, kind: monthDetail, is_planned: false, is_transfer: false, limit: 200 }),
     enabled: !!monthDetail,
   })
 

@@ -51,6 +51,7 @@ async def get_budget(
         .where(
             Transaction.household_id == household.id,
             Transaction.kind == "expense",
+            Transaction.is_transfer == False,
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date < month_end,
         )
@@ -127,6 +128,7 @@ async def upsert_budget(
             Transaction.household_id == household.id,
             Transaction.category_id == body.category_id,
             Transaction.kind == "expense",
+            Transaction.is_transfer == False,
             Transaction.transaction_date >= month_start,
             Transaction.transaction_date < month_end,
         )

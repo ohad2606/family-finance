@@ -107,6 +107,7 @@ class TransactionOut(BaseModel):
     transaction_date: date
     source: str
     is_planned: bool
+    is_transfer: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -1,4 +1,3 @@
-import hashlib
 import logging
 from datetime import date, datetime, timezone
 
@@ -58,10 +57,29 @@ class CommandUpdate(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _external_ref(source: str, account_number: str, txn: TxnIn) -> str:
-    if txn.identifier:
-        return f"{source}:{account_number}:{txn.identifier}"
-    fingerprint = f"{source}:{account_number}:{txn.date}:{txn.charged_amount}:{(txn.description or '')[:50]}"
-    return hashlib.sha256(fingerprint.encode()).hexdigest()[:32]
+    return f"{source}:{account_number}:{txn.identifier}"
+
+
+def _is_pending(txn: TxnIn) -> bool:
+    # תנועות עתידיות/ממתינות (למשל "חיוב לכרטיס ממקס" שהבנק מציג לפני מועד החיוב) מגיעות
+    # בלי מזהה, והסכום שלהן משתנה מסנכרון לסנכרון — קליטה שלהן יצרה שורה חדשה בכל פעם.
+    # הן ייקלטו כשהבנק יבצע אותן בפועל, עם מזהה קבוע.
+    return txn.status == "pending" or not txn.identifier
+
+
+# תיאורי חיוב כרטיס בעו"ש → המנפיק. רק מנפיקים שהכרטיסים שלהם נסרקים בנפרד.
+_CARD_PAYMENT_PATTERNS = {
+    "max": ("מקס איט פי", "ממקס"),
+    "isracard": ("ישראכרט",),
+}
+
+
+def _card_payment_issuer(description: str | None) -> str | None:
+    d = description or ""
+    for issuer, patterns in _CARD_PAYMENT_PATTERNS.items():
+        if any(p in d for p in patterns):
+            return issuer
+    return None
 
 
 def _parse_date(raw: str) -> date:
@@ -99,6 +117,17 @@ async def bank_sync(
 
     stats = {"accounts_found": 0, "txns_created": 0, "txns_skipped": 0}
 
+    # מנפיקים שיש להם כרטיס נסרק שנכלל בסיכומים — חיוב שלהם בעו"ש הוא העברה, לא הוצאה
+    synced_issuers = set((await db.execute(
+        select(Account.institution).where(
+            Account.household_id == payload.household_id,
+            Account.type == "credit",
+            Account.is_active == True,
+            Account.include_in_totals == True,
+            Account.institution.is_not(None),
+        )
+    )).scalars().all())
+
     for acc_in in payload.accounts:
         result = await db.execute(
             select(Account).where(
@@ -129,6 +158,9 @@ async def bank_sync(
         stats["accounts_found"] += 1
 
         for txn_in in acc_in.txns:
+            if _is_pending(txn_in):
+                stats["txns_skipped"] += 1
+                continue
             ext_ref = _external_ref(payload.source, acc_in.account_number, txn_in)
             exists = await db.execute(
                 select(Transaction.id).where(
@@ -148,6 +180,11 @@ async def bank_sync(
                 transaction_date=_parse_date(txn_in.date),
                 source="bank_sync",
                 external_ref=ext_ref,
+                is_transfer=(
+                    account.type == "checking"
+                    and txn_in.charged_amount < 0
+                    and _card_payment_issuer(txn_in.description) in synced_issuers
+                ),
             )
             db.add(txn)
             stats["txns_created"] += 1
