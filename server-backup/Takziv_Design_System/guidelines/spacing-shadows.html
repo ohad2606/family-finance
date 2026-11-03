@@ -1,0 +1,22 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Shadows" subtitle="quiet card · float · the one brass CTA glow" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; font-family: var(--font-sans); background: #fff; }
+  .row { display: flex; gap: 28px; padding: 28px 26px; align-items: center; }
+  .box { flex: 1; height: 80px; background: var(--card); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; }
+  .t { font-family: var(--font-display); font-size: 0.7rem; color: var(--muted); text-align: center; }
+  .cta { flex: 1; height: 80px; background: var(--brass); color: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-cta); display: flex; align-items: center; justify-content: center; font-weight: var(--fw-bold); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="box" style="box-shadow: var(--shadow-card);"><span class="t">card<br>0 2px 16px /.08</span></div>
+    <div class="box" style="box-shadow: var(--shadow-float);"><span class="t">float<br>0 20px 40px /.18</span></div>
+    <div class="cta">brass CTA glow</div>
+  </div>
+</body>
+</html>

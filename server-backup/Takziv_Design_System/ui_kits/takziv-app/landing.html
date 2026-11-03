@@ -1,0 +1,140 @@
+<!-- @dsCard group="Takziv App" viewport="1100x720" name="Landing page" subtitle="marketing hero, features, stats strip & CTA" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תקציב — landing</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  html, body { margin: 0; }
+  body { font-family: var(--font-sans); background: var(--paper); color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { Button, Card, MoneyAmount, Logo } = window.TakzivDesignSystem_57976b
+
+  const FEATURES = [
+    { icon: '◑', title: 'תמונה כלכלית שלמה', body: 'חשבונות, הלוואות, יעדי חיסכון ותזרים — הכל במסך אחד.' },
+    { icon: '◎', title: 'תקציב חכם', body: 'הגדר תקציב חודשי לכל קטגוריה וקבל התראה ברגע שחורגים.' },
+    { icon: '↺', title: 'תשלומים חוזרים', body: 'שכירות, מנויים, משכורת — נרשמים אוטומטית כל חודש.' },
+    { icon: '👨‍👩‍👧', title: 'ניהול משפחתי', body: 'הזמן בן/בת זוג לצפות ולערוך יחד, עם הרשאות נפרדות.' },
+    { icon: '◉', title: 'ציון בריאות פיננסית', body: 'אלגוריתם שמחשב את מצבך הפיננסי ומסביר איך להשתפר.' },
+    { icon: '⬆', title: 'ייבוא מהבנק', body: 'העלה קובץ CSV מהבנק ותנועות יסווגו אוטומטית.' },
+  ]
+  const STATS = [
+    { num: '100%', label: 'פרטי — לא מוכרים נתונים' },
+    { num: '∞', label: 'חשבונות וקטגוריות' },
+    { num: '30', label: 'יום refresh token' },
+    { num: '0 ₪', label: 'עלות — חינם לחלוטין' },
+  ]
+
+  function PhoneMock() {
+    return (
+      <div style={{ flex: '0 0 210px', filter: 'drop-shadow(0 20px 40px rgba(27,42,39,0.18))' }}>
+        <div style={{ width: 210, background: 'var(--paper)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--line)' }}>
+          <div style={{ background: 'var(--ink)', borderRadius: '12px 12px 0 0', padding: '12px 16px' }}>
+            <p style={{ margin: 0, color: 'var(--on-dark-sub)', fontSize: '0.62rem' }}>שווי נקי</p>
+            <MoneyAmount value={127430} onDark size="1.4rem" weight="var(--fw-black)" />
+            <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.55rem', marginTop: 4 }}>
+              <span style={{ color: 'var(--on-dark-pos)' }}>↑ ₪158,000</span>
+              <span style={{ color: 'var(--on-dark-neg)' }}>↓ ₪30,570</span>
+            </div>
+          </div>
+          <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ background: 'var(--card)', borderRadius: 8, padding: '6px 9px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>הכנסות יוני</span>
+              <MoneyAmount value={14200} kind="income" size="0.7rem" />
+            </div>
+            <div style={{ background: 'var(--card)', borderRadius: 8, padding: '6px 9px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.6rem', color: 'var(--muted)' }}>הוצאות יוני</span>
+              <MoneyAmount value={9840} kind="expense" size="0.7rem" />
+            </div>
+            <div style={{ background: 'var(--alert-bg)', borderRadius: 8, padding: '5px 9px', fontSize: '0.58rem', color: 'var(--alert-text)', fontWeight: 600 }}>⚠ מסעדות חרגו מהתקציב</div>
+            {[['משכורת', '+₪14,200', 'income'], ['שכירות', '−₪3,800', 'expense'], ['סופר', '−₪520', 'expense']].map(([d, a, k]) => (
+              <div key={d} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: 600, color: 'var(--ink)' }}>{d}</span>
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: k === 'income' ? 'var(--income)' : 'var(--expense)', fontFamily: 'var(--font-display)' }}>{a}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function Landing() {
+    return (
+      <div>
+        {/* Nav */}
+        <header style={{ background: 'var(--card)', borderBottom: '1px solid var(--line)', padding: '0.8rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
+          <Logo size={26} />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button variant="secondary" size="sm">כניסה</Button>
+            <Button variant="primary" size="sm">התחל בחינם</Button>
+          </div>
+        </header>
+
+        {/* Hero */}
+        <section style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 48, padding: '4rem 2rem 3rem', flexWrap: 'wrap', maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ flex: '1 1 320px', maxWidth: 480, textAlign: 'center' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--brass)', letterSpacing: '1px', textTransform: 'uppercase' }}>ניהול פיננסי משפחתי</p>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '3rem', color: 'var(--ink)', margin: '0 0 1rem', lineHeight: 1.15, letterSpacing: '-0.5px' }}>הכסף שלך,<br />בשליטה שלך</h1>
+            <p style={{ color: 'var(--muted)', fontSize: '1.05rem', lineHeight: 1.6, margin: '0 0 2rem' }}>תקציב עוזר לך ולמשפחתך לעקוב אחרי הכנסות והוצאות, לעמוד בתקציב ולבנות עתיד פיננסי יציב — בפשטות.</p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Button variant="primary" size="lg">התחל בחינם — ללא כרטיס אשראי</Button>
+            </div>
+          </div>
+          <PhoneMock />
+        </section>
+
+        {/* Features */}
+        <section style={{ background: 'var(--card)', padding: '4rem 2rem', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: 'var(--ink)', margin: '0 0 2.5rem' }}>כל מה שצריך לניהול כספים משפחתי</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', maxWidth: 900, margin: '0 auto' }}>
+            {FEATURES.map(f => (
+              <Card key={f.title} tone="paper" radius="lg" style={{ textAlign: 'right', padding: '1.5rem 1.25rem' }}>
+                <span style={{ fontSize: '1.6rem', display: 'block', marginBottom: 10 }}>{f.icon}</span>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: 'var(--ink)', margin: '0 0 6px' }}>{f.title}</h3>
+                <p style={{ color: 'var(--muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{f.body}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Stats */}
+        <section style={{ background: 'var(--ink)', color: '#fff', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', padding: '2.5rem 2rem', gap: '1.5rem' }}>
+          {STATS.map(s => (
+            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.8rem' }}>{s.num}</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--on-dark-sub)', textAlign: 'center' }}>{s.label}</span>
+            </div>
+          ))}
+        </section>
+
+        {/* CTA */}
+        <section style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.8rem', color: 'var(--ink)', margin: '0 0 0.75rem' }}>מוכן להתחיל?</h2>
+          <p style={{ color: 'var(--muted)', margin: '0 0 2rem', fontSize: '1rem' }}>הרשמה לוקחת פחות מדקה. אין צורך בכרטיס אשראי.</p>
+          <Button variant="primary" size="lg">צור חשבון חינם</Button>
+        </section>
+
+        {/* Footer */}
+        <footer style={{ background: 'var(--card)', borderTop: '1px solid var(--line)', padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <Logo size={22} />
+          <span style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>פיתוח: אוהד דוד · כל הזכויות שמורות © 2026</span>
+          <Button variant="secondary" size="sm">כניסה</Button>
+        </footer>
+      </div>
+    )
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Landing />)
+</script>
+</body>
+</html>

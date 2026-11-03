@@ -1,0 +1,80 @@
+/* ============================================================
+   Takziv — Color tokens
+   An earthy, calm finance palette: sage paper, forest-green ink,
+   brass accent, with forest = income and terracotta = expense.
+   Base values first, then semantic aliases.
+   ============================================================ */
+
+:root {
+  /* ---- Base palette ---- */
+  --paper:   #E9EBE4; /* app background — warm sage */
+  --card:    #F7F8F4; /* raised surface — off-white */
+  --ink:     #1B2A27; /* deep forest green — primary / dark cards */
+  --muted:   #6B746E; /* sage gray — secondary text */
+  --line:    #D5D8CF; /* hairline borders / dividers */
+  --income:  #2F6B4F; /* forest green — money in */
+  --expense: #B0573C; /* terracotta — money out */
+  --brass:   #C9A23F; /* brass gold — primary action / brand accent */
+  --white:   #ffffff;
+
+  /* ---- Semantic surfaces ---- */
+  --bg-app:        var(--paper);
+  --surface-card:  var(--card);
+  --surface-dark:  var(--ink);   /* hero / net-worth / health cards */
+  --surface-input: var(--paper); /* field fill */
+
+  /* ---- Semantic text ---- */
+  --text-strong: var(--ink);   /* headings, balances */
+  --text-body:   var(--ink);   /* default copy on light surfaces */
+  --text-muted:  var(--muted); /* labels, meta, captions */
+  --text-on-dark: var(--white);
+
+  /* ---- Borders & lines ---- */
+  --border:      var(--line);
+  --border-strong: var(--ink);
+
+  /* ---- Action ---- */
+  --accent:        var(--brass);
+  --accent-text:   var(--white);
+  --accent-shadow: rgba(201, 162, 63, 0.35);
+
+  /* ---- Money semantics ---- */
+  --positive: var(--income);
+  --negative: var(--expense);
+
+  /* ---- On dark-card values (over --ink) ---- */
+  --on-dark-fill:   rgba(255, 255, 255, 0.07); /* inset tile */
+  --on-dark-track:  rgba(255, 255, 255, 0.15); /* ring/track */
+  --on-dark-text:   rgba(255, 255, 255, 1);
+  --on-dark-sub:    rgba(255, 255, 255, 0.60);
+  --on-dark-faint:  rgba(255, 255, 255, 0.35);
+  --on-dark-pos:    #6EE7B7; /* positive delta on dark */
+  --on-dark-neg:    #FCA5A5; /* negative delta on dark */
+
+  /* ---- Status / health badges ---- */
+  --status-excellent-fg: #2F6B4F;  --status-excellent-bg: #D1FAE5;
+  --status-good-fg:      #1B879E;  --status-good-bg:      #CFFAFE;
+  --status-fair-fg:      #B45309;  --status-fair-bg:      #FEF3C7;
+  --status-poor-fg:      #B0573C;  --status-poor-bg:      #FEE2E2;
+  --status-na-fg:        #6B746E;  --status-na-bg:        #F3F4F6;
+
+  /* ---- Alert banner (over-budget) ---- */
+  --alert-bg:     #FEF3C7;
+  --alert-border: #FCD34D;
+  --alert-text:   #92400E;
+
+  /* ---- Categorical palette (charts / donut slices) ---- */
+  --cat-1:  #2F6B4F;
+  --cat-2:  #C9A23F;
+  --cat-3:  #4A7FA5;
+  --cat-4:  #8B5CF6;
+  --cat-5:  #E07B30;
+  --cat-6:  #B0573C;
+  --cat-7:  #1B879E;
+  --cat-8:  #6B746E;
+  --cat-9:  #9B4F8B;
+  --cat-10: #3D7A5E;
+
+  /* ---- Overlays ---- */
+  --scrim: rgba(27, 42, 39, 0.40); /* modal / sheet backdrop */
+}

@@ -1,0 +1,54 @@
+/* ============================================================
+   Takziv — Spacing, radii, shadows & layout tokens
+   A soft, rounded system. Cards are generously rounded with
+   quiet shadows; the only loud shadow is the brass CTA glow.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale ---- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- Gutters ---- */
+  --gutter-tight: 0.75rem; /* between sibling summary cards */
+  --gutter:       1rem;    /* between stacked sections */
+  --pad-screen:   1.25rem; /* app screen edge padding */
+
+  /* ---- Radii ---- */
+  --radius-xs:   4px;   /* code chip, tiny markers */
+  --radius-sm:   8px;   /* buttons, pills, list tiles */
+  --radius-md:   12px;  /* inputs, selects, inset tiles */
+  --radius-lg:   16px;  /* feature / summary cards */
+  --radius-xl:   20px;  /* hero & net-worth cards */
+  --radius-2xl:  22px;  /* auth card, bottom-sheet top */
+  --radius-pill: 999px; /* FAB, fully-round chips */
+
+  /* ---- Border widths ---- */
+  --border-hair: 1px;     /* @kind spacing */
+  --border-accent: 3px;  /* @kind spacing */ /* colored top-border on summary cards */
+
+  /* ---- Shadows ---- */
+  --shadow-card:  0 2px 16px rgba(27, 42, 39, 0.08);   /* raised card / auth */
+  --shadow-float: 0 20px 40px rgba(27, 42, 39, 0.18);  /* hero phone, popovers */
+  --shadow-cta:   0 4px 16px rgba(201, 162, 63, 0.35); /* brass button / FAB glow */
+
+  /* ---- Layout widths ---- */
+  --w-app:     560px;  /* mobile-first app column max */
+  --w-content: 1000px; /* marketing hero band */
+  --w-card:    380px;  /* auth card */
+
+  /* ---- Motion ---- */
+  --ease: ease; /* @kind other */
+  --dur-fast:  0.3s; /* @kind other */ /* hover/border transitions */
+  --dur-bar:   0.4s; /* @kind other */ /* progress / width fills */
+
+  /* ---- Direction ---- */
+  --dir: rtl; /* @kind other */
+}

@@ -1,0 +1,27 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="Logo & wordmark" subtitle="logomark + תקציב lockup, on paper and on ink" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; font-family: var(--font-display); background: #fff; }
+  .row { display: flex; gap: 16px; padding: 18px 16px; }
+  .panel { flex: 1; border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; gap: 12px; height: 120px; }
+  .word { font-weight: var(--fw-black); font-size: 2rem; }
+  img { display: block; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="panel" style="background: var(--paper);">
+      <img src="../assets/logomark.svg" width="52" height="52" alt="Takziv logomark">
+      <span class="word" style="color: var(--ink);">תקציב</span>
+    </div>
+    <div class="panel" style="background: var(--ink);">
+      <img src="../assets/logomark.svg" width="52" height="52" alt="Takziv logomark">
+      <span class="word" style="color: #fff;">תקציב</span>
+    </div>
+  </div>
+</body>
+</html>

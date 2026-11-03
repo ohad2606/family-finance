@@ -1,0 +1,8 @@
+ubuntu 24.04 / 6.17.0-1020-oracle
+Python 3.12.3
+v22.23.2
+psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
+nginx version: nginx/1.24.0 (Ubuntu)
+certbot 2.9.0
+7.0.1
+1.104.2

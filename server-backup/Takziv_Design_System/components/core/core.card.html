@@ -1,0 +1,119 @@
+<!-- @dsCard group="Components" viewport="700x760" name="Core" subtitle="buttons · cards · money · badges · forms · progress" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; font-family: var(--font-sans); background: #fff; color: var(--ink); padding: 20px; }
+  .grid { display: flex; flex-direction: column; gap: 22px; max-width: 640px; }
+  .block { }
+  .h { font-family: var(--font-display); font-size: 0.66rem; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .lbl { font-size: 0.7rem; color: var(--muted); margin: 0 0 5px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { Button, Card, MoneyAmount, Badge, Input, Select, Tabs, KindToggle, ProgressBar, SectionHeader, Logo } = window.TakzivDesignSystem_57976b
+  const { useState } = React
+
+  function Demo() {
+    const [tab, setTab] = useState('login')
+    const [kind, setKind] = useState('expense')
+    return (
+      <div className="grid">
+        <div className="block">
+          <p className="h">Logo</p>
+          <div className="row" style={{ gap: 24 }}>
+            <Logo size={30} />
+            <Card tone="dark" radius="lg" style={{ padding: '10px 16px' }}><Logo size={26} onDark /></Card>
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Buttons</p>
+          <div className="row">
+            <Button variant="primary">התחל בחינם</Button>
+            <Button variant="secondary">כניסה</Button>
+            <Button variant="ghost">הכל</Button>
+            <Button variant="dark">הרשמה</Button>
+            <Button variant="primary" disabled>שמור</Button>
+            <Button variant="primary" size="sm">+ הוסף</Button>
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Money</p>
+          <div className="row" style={{ gap: 20 }}>
+            <MoneyAmount value={127430} size="1.8rem" weight="var(--fw-black)" />
+            <MoneyAmount value={14200} kind="income" showSign />
+            <MoneyAmount value={3800} kind="expense" showSign />
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Cards</p>
+          <div className="two">
+            <Card tone="dark" radius="xl" style={{ textAlign: 'center', padding: '1rem' }}>
+              <p style={{ margin: 0, color: 'var(--on-dark-sub)', fontSize: '0.8rem' }}>שווי נקי</p>
+              <MoneyAmount value={127430} onDark size="1.8rem" weight="var(--fw-black)" />
+            </Card>
+            <Card accent="var(--income)" radius="lg">
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.75rem' }}>הכנסות יוני</p>
+              <MoneyAmount value={14200} kind="income" size="1.3rem" />
+            </Card>
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Badges</p>
+          <div className="row">
+            <Badge tone="excellent">מעולה</Badge>
+            <Badge tone="good">טוב</Badge>
+            <Badge tone="fair">בינוני</Badge>
+            <Badge tone="poor">דרוש שיפור</Badge>
+            <Badge tone="income">הכנסה</Badge>
+            <Badge tone="brass">חדש</Badge>
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Forms</p>
+          <div className="two">
+            <div className="stack">
+              <Input placeholder="אימייל" />
+              <Select defaultValue=""><option value="">בחר חשבון</option><option>עו״ש</option></Select>
+            </div>
+            <div className="stack">
+              <Tabs value={tab} onChange={setTab} items={[{value:'login',label:'כניסה'},{value:'register',label:'הרשמה'}]} />
+              <KindToggle value={kind} onChange={setKind} />
+            </div>
+          </div>
+        </div>
+
+        <div className="block">
+          <p className="h">Section header + progress</p>
+          <Card radius="lg">
+            <SectionHeader title="יעדי חיסכון" actionLabel="הכל" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>🏖 חופשה</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>₪6,400 / ₪10,000</span>
+            </div>
+            <ProgressBar pct={64} />
+          </Card>
+        </div>
+      </div>
+    )
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />)
+</script>
+</body>
+</html>

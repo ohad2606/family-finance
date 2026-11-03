@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Takziv main screen" description="Family-finance home — 'available to spend' hero (after fixed costs), category budgets, month summary & recent activity, in the Takziv style." -->
+<helmet>
+  <script src="./ds-base.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@700;900&display=swap');
+    body { margin: 0; }
+  </style>
+</helmet>
+
+<div style="min-height:100vh; background:var(--paper); font-family:var(--font-sans); direction:rtl; color:var(--ink); padding-bottom:96px; position:relative;">
+
+  <!-- Header -->
+  <header style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem 0.5rem;">
+    <div>
+      <p style="margin:0; color:var(--muted); font-size:0.8rem;">ערב טוב,</p>
+      <p style="margin:0; font-family:var(--font-display); font-weight:900; font-size:1.25rem; color:var(--ink);">דנה</p>
+    </div>
+    <svg width="30" height="30" viewBox="0 0 64 64" style="flex-shrink:0;">
+      <rect width="64" height="64" rx="14" fill="#1B2A27"></rect>
+      <polygon points="32,14 50,32 14,32" fill="#C9A23F"></polygon>
+      <rect x="18" y="31" width="28" height="17" rx="1" fill="#C9A23F" fill-opacity="0.18" stroke="#C9A23F" stroke-width="2"></rect>
+      <text x="32" y="43" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="bold" fill="#C9A23F">₪</text>
+    </svg>
+  </header>
+
+  <div style="display:flex; flex-direction:column; gap:0.85rem; padding:0.5rem 1.15rem 0;">
+
+    <!-- Hero: available to spend -->
+    <div style="background:var(--ink); border-radius:var(--radius-xl); padding:1.3rem 1.3rem 1.1rem; color:#fff;">
+      <p style="margin:0; color:var(--on-dark-sub); font-size:0.85rem;">פנוי להוצאה</p>
+      <p style="margin:0.15rem 0 0.1rem; font-family:var(--font-display); font-weight:900; font-size:2.5rem; color:#fff; font-variant-numeric:tabular-nums;">₪4,360</p>
+      <p style="margin:0 0 0.9rem; color:var(--on-dark-faint); font-size:0.74rem;">אחרי הוראות קבע ותשלומים קבועים</p>
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1; background:var(--on-dark-fill); border-radius:var(--radius-md); padding:0.55rem 0.7rem;">
+          <p style="margin:0; color:var(--on-dark-sub); font-size:0.66rem;">בערך ליום</p>
+          <p style="margin:2px 0 0; font-family:var(--font-display); font-weight:900; font-size:1.05rem; color:#fff; font-variant-numeric:tabular-nums;">≈ ₪218</p>
+        </div>
+        <div style="flex:1; background:var(--on-dark-fill); border-radius:var(--radius-md); padding:0.55rem 0.7rem;">
+          <p style="margin:0; color:var(--on-dark-sub); font-size:0.66rem;">לסוף החודש</p>
+          <p style="margin:2px 0 0; font-family:var(--font-display); font-weight:900; font-size:1.05rem; color:#fff;">20 ימים</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Month summary -->
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1; background:var(--card); border-radius:var(--radius-md); padding:0.7rem 0.85rem;">
+        <p style="margin:0; color:var(--muted); font-size:0.72rem;">הכנסות החודש</p>
+        <p style="margin:2px 0 0; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--income); font-variant-numeric:tabular-nums;">₪14,200</p>
+      </div>
+      <div style="flex:1; background:var(--card); border-radius:var(--radius-md); padding:0.7rem 0.85rem;">
+        <p style="margin:0; color:var(--muted); font-size:0.72rem;">הוצאות החודש</p>
+        <p style="margin:2px 0 0; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--expense); font-variant-numeric:tabular-nums;">₪9,840</p>
+      </div>
+    </div>
+
+    <!-- Over-budget alert -->
+    <div style="background:var(--alert-bg); border:1px solid var(--alert-border); border-radius:var(--radius-md); padding:0.6rem 0.85rem; display:flex; align-items:center; gap:8px; color:var(--alert-text);">
+      <span style="font-size:1rem;">⚠</span>
+      <span style="flex:1; font-size:0.82rem;"><b style="font-weight:700;">🍽 מסעדות</b> חרגו ב־₪120</span>
+      <span style="opacity:0.6;">›</span>
+    </div>
+
+    <!-- Category budgets -->
+    <div style="background:var(--card); border-radius:var(--radius-lg); padding:0.9rem 1rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;">
+        <h2 style="font-family:var(--font-display); font-weight:700; font-size:0.95rem; color:var(--ink); margin:0;">תקציב לפי קטגוריה</h2>
+        <span style="color:var(--brass); font-weight:600; font-size:0.82rem;">הכל</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:13px;">
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-weight:600; color:var(--ink); font-size:0.88rem;">🛒 אוכל</span>
+            <span style="font-size:0.8rem; font-family:var(--font-display); font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums;">נשאר ₪360</span>
+          </div>
+          <div style="background:var(--line); border-radius:var(--radius-sm); height:7px; overflow:hidden;"><div style="background:var(--income); border-radius:var(--radius-sm); height:100%; width:82%;"></div></div>
+          <p style="margin:3px 0 0; font-size:0.68rem; color:var(--muted); font-family:var(--font-display); font-variant-numeric:tabular-nums;">₪1,640 / ₪2,000</p>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-weight:600; color:var(--ink); font-size:0.88rem;">🍽 מסעדות</span>
+            <span style="font-size:0.8rem; font-family:var(--font-display); font-weight:700; color:var(--expense); font-variant-numeric:tabular-nums;">חריגה ₪120</span>
+          </div>
+          <div style="background:var(--line); border-radius:var(--radius-sm); height:7px; overflow:hidden;"><div style="background:var(--expense); border-radius:var(--radius-sm); height:100%; width:100%;"></div></div>
+          <p style="margin:3px 0 0; font-size:0.68rem; color:var(--muted); font-family:var(--font-display); font-variant-numeric:tabular-nums;">₪720 / ₪600</p>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-weight:600; color:var(--ink); font-size:0.88rem;">🚗 תחבורה</span>
+            <span style="font-size:0.8rem; font-family:var(--font-display); font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums;">נשאר ₪360</span>
+          </div>
+          <div style="background:var(--line); border-radius:var(--radius-sm); height:7px; overflow:hidden;"><div style="background:var(--income); border-radius:var(--radius-sm); height:100%; width:60%;"></div></div>
+          <p style="margin:3px 0 0; font-size:0.68rem; color:var(--muted); font-family:var(--font-display); font-variant-numeric:tabular-nums;">₪540 / ₪900</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Recent transactions -->
+    <div style="background:var(--card); border-radius:var(--radius-lg); padding:0.9rem 1rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;">
+        <h2 style="font-family:var(--font-display); font-weight:700; font-size:0.95rem; color:var(--ink); margin:0;">תנועות אחרונות</h2>
+        <span style="color:var(--brass); font-weight:600; font-size:0.82rem;">הכל</span>
+      </div>
+      <div style="display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:10px; padding:0.55rem 0; border-bottom:1px solid var(--line);">
+          <span style="width:32px; height:32px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:0.95rem; flex-shrink:0;">🛒</span>
+          <div style="flex:1; min-width:0;">
+            <p style="margin:0; font-weight:600; color:var(--ink); font-size:0.88rem;">סופר רמי לוי</p>
+            <p style="margin:0; color:var(--muted); font-size:0.72rem;">היום</p>
+          </div>
+          <span style="font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:var(--expense); font-variant-numeric:tabular-nums;">−₪642</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:0.55rem 0; border-bottom:1px solid var(--line);">
+          <span style="width:32px; height:32px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:0.95rem; flex-shrink:0;">🚗</span>
+          <div style="flex:1; min-width:0;">
+            <p style="margin:0; font-weight:600; color:var(--ink); font-size:0.88rem;">דלק פז</p>
+            <p style="margin:0; color:var(--muted); font-size:0.72rem;">אתמול</p>
+          </div>
+          <span style="font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:var(--expense); font-variant-numeric:tabular-nums;">−₪310</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:0.55rem 0;">
+          <span style="width:32px; height:32px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:0.95rem; flex-shrink:0;">💼</span>
+          <div style="flex:1; min-width:0;">
+            <p style="margin:0; font-weight:600; color:var(--ink); font-size:0.88rem;">משכורת</p>
+            <p style="margin:0; color:var(--muted); font-size:0.72rem;">12.6</p>
+          </div>
+          <span style="font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:var(--income); font-variant-numeric:tabular-nums;">+₪14,200</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FAB: add expense -->
+  <button style="position:fixed; bottom:20px; inset-inline-end:20px; width:56px; height:56px; border-radius:50%; background:var(--brass); color:#fff; border:none; font-size:1.8rem; cursor:pointer; box-shadow:var(--shadow-cta); display:flex; align-items:center; justify-content:center; font-weight:300; line-height:1;">+</button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 400, &quot;height&quot;: 760}}"></script>
+</body>
+</html>

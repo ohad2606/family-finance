@@ -1,0 +1,62 @@
+<!-- @dsCard group="Takziv App" viewport="1340x900" name="Main screen — redesign (3 options)" subtitle="פנוי להוצאה · תקציבי קטגוריות · הוספה מהירה" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תקציב — עיצוב מחדש למסך הראשי</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  html, body { margin: 0; }
+  body { font-family: var(--font-sans); background: #DCDFD6; color: var(--ink); padding: 36px 28px 56px; box-sizing: border-box; }
+  .frames { display: flex; gap: 40px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  .frame { display: flex; flex-direction: column; gap: 14px; width: 380px; }
+  .label .n { font-family: var(--font-display); font-weight: 900; font-size: 1.05rem; color: var(--ink); }
+  .label .d { color: var(--muted); font-size: 0.86rem; line-height: 1.45; margin: 4px 0 0; }
+  .label .tag { display: inline-block; font-family: var(--font-display); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.5px; color: var(--brass); background: rgba(201,162,63,0.12); border-radius: 6px; padding: 2px 8px; margin-bottom: 6px; }
+  .device { width: 380px; height: 800px; border-radius: 44px; background: #fff; padding: 9px; box-shadow: var(--shadow-float), 0 0 0 2px rgba(27,42,39,0.06); box-sizing: border-box; }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: var(--paper); }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .scroll::-webkit-scrollbar { width: 0; }
+  @keyframes tz-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes tz-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .head { text-align: center; max-width: 720px; margin: 0 auto 30px; }
+  .head h1 { font-family: var(--font-display); font-weight: 900; font-size: 1.5rem; margin: 0 0 6px; }
+  .head p { color: var(--muted); margin: 0; font-size: 0.92rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="head">
+  <h1>מסך ראשי — שלוש גישות</h1>
+  <p>הגיבור: <b>"פנוי להוצאה"</b> (יתרה אחרי הוראות קבע ותשלומים קבועים), במסגור יומי + חודשי, עם תקציבי קטגוריות. כל מסך אינטראקטיבי — לחצו על ה־+ להוספת הוצאה.</p>
+</div>
+<div class="frames">
+  <div class="frame">
+    <div class="label"><span class="tag">גישה A</span><div class="n">חודשי רגוע</div><p class="d">מספר חודשי גדול ושקט בראש, עם "ליום" ו"ימים לסוף החודש". תקציבי הקטגוריות כפסים מתחת.</p></div>
+    <div class="device"><div class="screen" id="screen-a"></div></div>
+  </div>
+  <div class="frame">
+    <div class="label"><span class="tag">גישה B</span><div class="n">חוגה יומית</div><p class="d">"כמה יש לי להיום" כחוגה מרכזית, והחודשי כשורה משנית. מתאים למי שמנהל יום-יום.</p></div>
+    <div class="device"><div class="screen" id="screen-b"></div></div>
+  </div>
+  <div class="frame">
+    <div class="label"><span class="tag">גישה C</span><div class="n">תקציבים במרכז</div><p class="d">באנר פנוי דק, והקטגוריות הן הגיבור — רשת אריחים עם "נשאר" לכל קטגוריה במבט אחד.</p></div>
+    <div class="device"><div class="screen" id="screen-c"></div></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel" src="redesign-data.jsx"></script>
+<script type="text/babel" src="redesign-shared.jsx"></script>
+<script type="text/babel" src="redesign-variations.jsx"></script>
+<script type="text/babel">
+  const D = window.TZ_REDESIGN
+  ReactDOM.createRoot(document.getElementById('screen-a')).render(<window.MainA data={D} />)
+  ReactDOM.createRoot(document.getElementById('screen-b')).render(<window.MainB data={D} />)
+  ReactDOM.createRoot(document.getElementById('screen-c')).render(<window.MainC data={D} />)
+</script>
+</body>
+</html>

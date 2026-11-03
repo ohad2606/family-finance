@@ -1,0 +1,44 @@
+/* ============================================================
+   Takziv — Typography tokens
+   Two families. Assistant carries UI + body; Heebo is the display
+   face for headings, the logotype and every monetary figure.
+   Numbers always use tabular-nums so columns of ₪ align.
+   Hebrew-first, RTL by default.
+   ============================================================ */
+
+:root {
+  /* ---- Families ---- */
+  --font-sans:    'Assistant', system-ui, 'Segoe UI', sans-serif; /* UI + body */
+  --font-display: 'Heebo', 'Assistant', system-ui, sans-serif;    /* headings + numerals */
+
+  /* ---- Weights ---- */
+  --fw-regular:  400; /* @kind font */
+  --fw-medium:   500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold:     700; /* @kind font */
+  --fw-black:    900; /* @kind font */ /* display / logotype / hero balances */
+
+  /* ---- Type scale (rem) ---- */
+  --fs-hero:     3rem;     /* landing headline (clamps down on small screens) */
+  --fs-display:  2.2rem;   /* net-worth balance */
+  --fs-h1:       1.4rem;   /* app header / logo */
+  --fs-h2:       1.3rem;   /* summary figures */
+  --fs-h3:       1rem;     /* section titles */
+  --fs-body:     1rem;     /* default copy */
+  --fs-sm:       0.9rem;   /* dense rows, buttons */
+  --fs-meta:     0.78rem;  /* labels, account type */
+  --fs-caption:  0.72rem;  /* captions, badges */
+  --fs-micro:    0.6rem;   /* fine print on dark tiles */
+
+  /* ---- Line heights ---- */
+  --lh-tight:  1.2;  /* @kind font */ /* display / headings */
+  --lh-snug:   1.4;  /* @kind font */
+  --lh-body:   1.6;  /* @kind font */ /* paragraphs */
+
+  /* ---- Letter spacing ---- */
+  --ls-eyebrow: 1px;    /* @kind font */ /* uppercase eyebrows */
+  --ls-tight:   -0.5px; /* @kind font */ /* large display text */
+
+  /* ---- Numeric helper ---- */
+  --numeric: tabular-nums; /* @kind other */
+}

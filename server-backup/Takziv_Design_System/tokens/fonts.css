@@ -1,0 +1,7 @@
+/* ============================================================
+   Takziv — Webfonts
+   Hebrew-first type. Assistant = UI/body, Heebo = display & numerals.
+   Loaded from Google Fonts (the source app links these exact families).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Heebo:wght@400;500;700;800;900&display=swap');

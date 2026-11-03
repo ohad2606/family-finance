@@ -1,0 +1,23 @@
+<!-- @dsCard group="Colors" viewport="700x130" name="Status & health badges" subtitle="soft fg-on-tint scale for the financial-health card" -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; font-family: var(--font-sans); background: #fff; }
+  .row { display: flex; gap: 10px; padding: 18px 16px; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: 0.78rem; font-weight: var(--fw-bold); padding: 5px 12px; border-radius: var(--radius-sm); }
+  .alert { display: flex; align-items: center; gap: 8px; background: var(--alert-bg); border: 1px solid var(--alert-border); color: var(--alert-text); border-radius: var(--radius-md); padding: 8px 12px; font-size: 0.8rem; font-weight: var(--fw-semibold); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <span class="badge" style="color: var(--status-excellent-fg); background: var(--status-excellent-bg);">מעולה · excellent</span>
+    <span class="badge" style="color: var(--status-good-fg); background: var(--status-good-bg);">טוב · good</span>
+    <span class="badge" style="color: var(--status-fair-fg); background: var(--status-fair-bg);">בינוני · fair</span>
+    <span class="badge" style="color: var(--status-poor-fg); background: var(--status-poor-bg);">דרוש שיפור · poor</span>
+    <span class="alert">⚠ 2 קטגוריות חרגו מהתקציב</span>
+  </div>
+</body>
+</html>
